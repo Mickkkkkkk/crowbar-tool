@@ -45,6 +45,8 @@ fun load(paths : List<Path>) : Pair<Model,Repository> {
         System.err.println("error during parsing, aborting")
         exitProcess(-1)
     }
+    if(model.hasParserErrors())
+        throw Exception("Compilation failed with parse errors")
     if(model.hasTypeErrors())
         throw Exception("Compilation failed with type errors")
 
