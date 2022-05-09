@@ -1,0 +1,25 @@
+module M;
+
+
+class C{
+
+    [Spec: Ensures(abs(i) == abs(result))]
+    Int absEqSuccess(Int i) {
+        return 0-i;
+    }
+
+    [Spec: Ensures(abs(i) == result)]
+    Int absFuncSuccess(Int i) {
+        Int res = i;
+        if(res < 0)
+            res = 0-res;
+        return res;
+    }
+
+    [Spec: Ensures(abs(i) >= result)]
+        Int absPropSuccess(Int i) {
+            return i;
+        }
+}
+
+{}
