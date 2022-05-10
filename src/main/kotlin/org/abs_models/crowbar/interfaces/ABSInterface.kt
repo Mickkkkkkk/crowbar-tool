@@ -194,6 +194,9 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>)
         is FnApp ->
             if (input.name == "valueOf")
                 readFut(translateExpression(input.params.getChild(0), returnType, subst))
+            else if(input.name in FunctionRepos.functionPairTriple) {
+                SExpr(input.name, input.params.map { translateExpression(it, returnType, subst) })
+            }
             else if(input.name == "abs")
                 SExpr(input.name, input.params.map { translateExpression(it, returnType, subst) })
             else if (input.name == "hasRole") {

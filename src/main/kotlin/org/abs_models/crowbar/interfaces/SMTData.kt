@@ -56,6 +56,9 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
                     dataConstructor.constructorArgList.map {
                         if (!isGeneric(it.type)) {
                             ArgsSMT(
+                                if(dTypeDecl.type.simpleName == "Pair" || dTypeDecl.type.simpleName == "Triple")
+                                    argsPairTriple(count++,dTypeDecl.type as DataTypeType)
+                                else
                                 "${dataConstructor.qualifiedName}_${count++}",
                                 listOf(
                                     Function(
@@ -304,4 +307,9 @@ fun getSMT(name: String, params: String): String{
             else -> "$name $params"
         }
     return "($ret)"
+}
+
+fun argsPairTriple(elNum:Int, type:DataTypeType):String{
+    val map = listOf("fst", "snd","trd")
+    return map[elNum]+if(type.simpleName == "Triple") {"T"}else{""}
 }

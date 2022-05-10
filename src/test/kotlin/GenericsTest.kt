@@ -62,6 +62,19 @@ class GenericsTest : CrowbarTest() {
                 val wrappedOldSuccess = classDecl.extractMethodNode(postInv, "wrappedOldSuccess", repos)
                 executeNode(wrappedOldSuccess, repos, postInv) shouldBe true
 
+                val fstSimpleSuccess = classDecl.extractMethodNode(postInv, "fstSimpleSuccess", repos)
+                executeNode(fstSimpleSuccess, repos, postInv) shouldBe true
+
+                val fstParamSuccess = classDecl.extractMethodNode(postInv, "fstParamSuccess", repos)
+                executeNode(fstParamSuccess, repos, postInv) shouldBe true
+
+                val sndSimpleSuccess = classDecl.extractMethodNode(postInv, "sndSimpleSuccess", repos)
+                executeNode(sndSimpleSuccess, repos, postInv) shouldBe true
+
+                val sndParamSuccess = classDecl.extractMethodNode(postInv, "sndParamSuccess", repos)
+                executeNode(sndParamSuccess, repos, postInv) shouldBe true
+
+
             }
             "$smt list"{
                 smtPath = smt
@@ -108,6 +121,26 @@ class GenericsTest : CrowbarTest() {
 
                 val wrappedOldSuccess = classDecl.extractMethodNode(postInv, "wrappedOldSuccess", repos)
                 executeNode(wrappedOldSuccess, repos, postInv) shouldBe true
+
+                val fstTSimpleSuccess = classDecl.extractMethodNode(postInv, "fstTSimpleSuccess", repos)
+                executeNode(fstTSimpleSuccess, repos, postInv) shouldBe true
+
+                val fstTParamSuccess = classDecl.extractMethodNode(postInv, "fstTParamSuccess", repos)
+                executeNode(fstTParamSuccess, repos, postInv) shouldBe true
+
+
+                val sndTSimpleSuccess = classDecl.extractMethodNode(postInv, "sndTSimpleSuccess", repos)
+                executeNode(sndTSimpleSuccess, repos, postInv) shouldBe true
+                val sndTParamSuccess = classDecl.extractMethodNode(postInv, "sndTParamSuccess", repos)
+                executeNode(sndTParamSuccess, repos, postInv) shouldBe true
+
+
+                val trdTSimpleSuccess = classDecl.extractMethodNode(postInv, "trdTSimpleSuccess", repos)
+                executeNode(trdTSimpleSuccess, repos, postInv) shouldBe true
+
+                val trdTParamSuccess = classDecl.extractMethodNode(postInv, "trdTParamSuccess", repos)
+                executeNode(trdTParamSuccess, repos, postInv) shouldBe true
+
 
             }
         }

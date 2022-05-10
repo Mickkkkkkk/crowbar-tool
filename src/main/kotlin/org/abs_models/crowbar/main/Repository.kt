@@ -192,6 +192,10 @@ object ADTRepos {
 }
 
 object FunctionRepos{
+
+	val functionPair = listOf("fst","snd")
+	val functionTriple = setOf("fstT","sndT","trdT")
+	val functionPairTriple = functionTriple.union(functionPair)
     val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
 

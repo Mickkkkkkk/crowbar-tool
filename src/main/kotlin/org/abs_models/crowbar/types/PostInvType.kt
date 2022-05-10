@@ -805,6 +805,8 @@ fun getReturnType(term: Term) : Type {
             "Unit" -> ADTRepos.model!!.unitType
             "ite" -> getReturnType(term.params[1])
             "select" -> (term.params[1] as Field).concrType
+            in FunctionRepos.functionPair -> (getReturnType(term.params[0]) as DataTypeType).getTypeArg(FunctionRepos.functionPair.indexOf(term.name))
+            in FunctionRepos.functionTriple -> (getReturnType(term.params[0]) as DataTypeType).getTypeArg(FunctionRepos.functionTriple.indexOf(term.name))
             else -> {
                 val fName = term.name.replace("-",".")
                 if(FunctionRepos.isKnown(fName))

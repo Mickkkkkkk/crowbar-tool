@@ -94,6 +94,29 @@ class PairClass(Pair<Type, Bool> f, Type f1, Type f2) {
     Unit wrappedOldSuccess(){
         this.f = Pair(Type1,False);
     }
+
+    [Ensures(fst(this.f) == Type1)]
+    Unit fstSimpleSuccess(){
+        this.f = Pair(Type1,False);
+    }
+
+    [Requires(fst(p) == Type1)]
+    [Ensures(result == Type1)]
+    Type fstParamSuccess(Pair<Type,Bool> p){
+        return fst(p);
+    }
+
+    [Ensures(snd(this.f) == False)]
+    Unit sndSimpleSuccess(){
+        this.f = Pair(Type1,False);
+    }
+
+    [Requires(snd(p) == False)]
+    [Ensures(result == False)]
+    Bool sndParamSuccess(Pair<Int,Bool> p){
+        return snd(p);
+    }
+
 }
 
 class ListClass(List<Type> list, Type ft){
@@ -161,6 +184,38 @@ class TripleClass(Triple<Type,Int,Bool> triple,Int fi){
         this.triple = Triple(Type1, 0,False);
     }
 
+    [Ensures(fstT(this.triple) == Type1)]
+    Unit fstTSimpleSuccess(){
+        this.triple = Triple(Type1,1,False);
+    }
+
+    [Requires(fstT(p) == Type1)]
+    [Ensures(result == Type1)]
+    Type fstTParamSuccess(Triple<Type,Int,Bool> p){
+        return fstT(p);
+    }
+
+    [Ensures(sndT(this.triple) == 1)]
+    Unit sndTSimpleSuccess(){
+        this.triple = Triple(Type1,1,False);
+    }
+
+    [Requires(sndT(p) == 1)]
+    [Ensures(result == 1)]
+    Int sndTParamSuccess(Triple<Type,Int,Bool> p){
+        return sndT(p);
+    }
+
+    [Ensures(trdT(this.triple) == False)]
+    Unit trdTSimpleSuccess(){
+        this.triple = Triple(Type1,1,False);
+    }
+
+    [Requires(trdT(p) == False)]
+    [Ensures(result == False)]
+    Bool trdTParamSuccess(Triple<Type,Int,Bool> p){
+        return trdT(p);
+    }
 
 }
 
