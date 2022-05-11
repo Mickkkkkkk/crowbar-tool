@@ -8,6 +8,21 @@ data Type = Type1 | Type2;
 [Ensures(result != Just(Nothing))]
 def Maybe<Maybe<Int>> trivialFunction(Int x) = Just(Just(1));
 
+[Spec: Ensures(fst(result)!=0)]
+def Pair<Int,Int> pairFuncSimpleSuccess(Int d, Pair<Int,Int> current) =
+    case d {
+        1 =>  Pair(1, 1);
+        _ =>  Pair(2, 2);
+    };
+
+[Spec: Ensures(fst(result)==snd(result))]
+  def Pair<Int,Int> pairFuncWrappedSimpleSuccess(Int d, Pair<Int,Int> current) =
+      case d {
+         1 =>  Pair(fst(current), fst(current));
+         _ =>  Pair(snd(current), snd(current));
+      };
+
+
 class MaybeClass(Maybe<Int> f, Type f1, Int fi) {
 
     [Ensures(Just(1) == Just(1))]

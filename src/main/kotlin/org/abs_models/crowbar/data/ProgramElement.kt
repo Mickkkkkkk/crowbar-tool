@@ -285,7 +285,7 @@ data class DataTypeExpr(val name : String, val dType : String,val concrType: Typ
     }
 }
 
-data class CaseExpr(val match: Expr, val expectedType:String, val content: List<BranchExpr>, val freeVars : Set<String>) : Expr{
+data class CaseExpr(val match: Expr, val expectedType:String, val content: List<BranchExpr>, val freeVars : Set<String>, val expectedTypeConcr:Type) : Expr{
     override var absExp: org.abs_models.frontend.ast.Exp? = null
 
     override fun prettyPrint(): String {

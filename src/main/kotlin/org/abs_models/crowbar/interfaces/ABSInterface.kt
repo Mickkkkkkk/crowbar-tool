@@ -230,7 +230,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>)
                 input.branchList.map {
                 BranchExpr(
                     translatePattern(it.left, it.patternExpType, returnType, subst),
-                    translateExpression(it.right, returnType, subst))}, input.freeVars)
+                    translateExpression(it.right, returnType, subst))}, input.freeVars,input.type)
         }
         is StringLiteral -> {
             Const("\"" + input.content +"\"", input.model.stringType)

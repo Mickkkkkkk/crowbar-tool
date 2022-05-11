@@ -816,8 +816,12 @@ fun getReturnType(term: Term) : Type {
             }
         }
     }
-    else
+    else if(term is Case){
+        return term.expectedTypeConcr
+    }
+    else {
         throw java.lang.Exception("Term $term not allowed as return ")
+    }
 }
 
 fun divByZeroNodes(exprs: List<Expr>, next : Stmt, input : SymbolicState, repos: Repository) : List<SymbolicTree> =

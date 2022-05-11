@@ -120,15 +120,15 @@ fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set
     }
 }
 
-data class Case(val match : Term, val expectedType :String, val branches : List<BranchTerm>, val freeVars : Set<String>) : Term {
+data class Case(val match : Term, val expectedType :String, val branches : List<BranchTerm>, val freeVars : Set<String>,val expectedTypeConcr :Type) : Term {
     private lateinit var wildCardName: String
 
     override fun toSMT(indent:String): String {
         if (branches.isNotEmpty() ){
             if(!::wildCardName.isInitialized)
-                wildCardName = createWildCard(expectedType)
+                wildCardName = createWildCard(expectedType,expectedTypeConcr)
             else
-                refreshWildCard(wildCardName, expectedType)
+                refreshWildCard(wildCardName, expectedType,expectedTypeConcr)
                 
             val firstMatchTerm = Function(wildCardName)
 
@@ -356,7 +356,7 @@ fun exprToTerm(input : Expr, specialKeyword : String="NONE") : Term {
         }
         is CaseExpr -> {
             val match =exprToTerm(input.match)
-            Case(match, input.expectedType, input.content.map { ex -> BranchTerm(exprToTerm(ex.matchTerm, specialKeyword), exprToTerm(ex.branch, specialKeyword)) },input.freeVars)
+            Case(match, input.expectedType, input.content.map { ex -> BranchTerm(exprToTerm(ex.matchTerm, specialKeyword), exprToTerm(ex.branch, specialKeyword)) },input.freeVars,input.expectedTypeConcr)
         }
         is ImplementsExpr -> ImplementsTerm(exprToTerm(input.variable),input.interfaceType)
 

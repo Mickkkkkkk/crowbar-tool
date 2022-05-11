@@ -76,6 +76,21 @@ class GenericsTest : CrowbarTest() {
 
 
             }
+            "$smt pairFunctions"{
+                smtPath = smt
+
+                val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
+
+                val pairFuncSimpleSuccess = model.extractFunctionDecl("Generics", "pairFuncSimpleSuccess").exctractFunctionNode(postInv)
+                executeNode(pairFuncSimpleSuccess, repos, postInv) shouldBe true
+
+                val pairFuncWrappedSimpleSuccess = model.extractFunctionDecl("Generics", "pairFuncWrappedSimpleSuccess").exctractFunctionNode(postInv)
+                executeNode(pairFuncWrappedSimpleSuccess, repos, postInv) shouldBe true
+
+
+            }
+
+
             "$smt list"{
                 smtPath = smt
 

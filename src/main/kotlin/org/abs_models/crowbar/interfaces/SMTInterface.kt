@@ -8,6 +8,7 @@ import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.types.booleanFunction
 import org.abs_models.frontend.typechecker.DataTypeType
+import org.abs_models.frontend.typechecker.Type
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -199,14 +200,20 @@ private val wildCardsConst = mutableMapOf<String,String>()
 
 private var countWildCard = 0
 
-fun createWildCard(dType: String) : String{
+fun createWildCard(dType: String,dTypeConcr: Type) : String{
     val wildCard = "_${countWildCard++}"
-    wildCardsConst[wildCard] = dType
+    if(dTypeConcr.simpleName in setOf("Pair","Triple"))
+        wildCardsConst[wildCard] = genericSMTName(dTypeConcr.qualifiedName,dTypeConcr)
+    else
+        wildCardsConst[wildCard] = dType
     return wildCard
 }
 
-fun refreshWildCard(name: String, dType: String) {
-    wildCardsConst[name] = dType
+fun refreshWildCard(name: String, dType: String,dTypeConcr: Type) {
+    if(dTypeConcr.simpleName in setOf("Pair","Triple"))
+        wildCardsConst[name] = genericSMTName(dTypeConcr.qualifiedName,dTypeConcr)
+    else
+        wildCardsConst[name] = dType
 }
 
 fun resetWildCards() {
