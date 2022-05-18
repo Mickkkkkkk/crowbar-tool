@@ -488,6 +488,8 @@ class PostInvTest : CrowbarTest() {
 				executeNode(res, repos, postInv) shouldBe false
 				res = classDecl.extractMethodNode(postInv, "m6", repos)
 				executeNode(res, repos, postInv) shouldBe false
+				res = classDecl.extractMethodNode(postInv, "caseBoolSimpleSuccessMethod", repos)
+				executeNode(res, repos, postInv) shouldBe true
 			}
 
 			"$smt suspend"{

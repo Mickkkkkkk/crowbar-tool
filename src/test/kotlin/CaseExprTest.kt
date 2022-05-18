@@ -66,6 +66,14 @@ class CaseExprTest : CrowbarTest() {
                     classDecl.extractMethodNode(postInv, "patternMatchingFuncMatchSuccess", repos)
                 executeNode(patternMatchingFuncMatchSuccess, repos, postInv) shouldBe true
             }
+
+            "$smt boolPatternMatching"{
+                smtPath = smt
+                val (model, repos) = load(listOf(Paths.get("src/test/resources/caseExpr.abs")))
+                val caseBoolSimpleSuccessFuncDecl = model.extractFunctionDecl("CaseExpr", "caseBoolSimpleSuccessMethod").exctractFunctionNode(postInv)
+                executeNode(caseBoolSimpleSuccessFuncDecl, repos, postInv) shouldBe true
+
+            }
         }
     }
 }

@@ -24,7 +24,12 @@ def Type patternMatchingDoubleWrappedTypeFunc(Type i) = case i {Type1(Type1(_)) 
 
 def DType patternMatchingFuncMatchFun(DType i) = case dt(i) {DType1(_,res) => res;};
 
-
+[Spec: Ensures(result == !d)]
+def Bool caseBoolSimpleSuccessMethod(Bool d) =
+    case d {
+        True =>  False;
+        _ =>  True;
+    };
 
 class E(ComplexOption fieldA){
 

@@ -101,8 +101,13 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
 
 fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set<String>): Formula {
     var countParameter = 0
+    return branchTerm.params.foldRight(
+        if(branchTerm.concrType!!.isBoolType)
+                Eq(match, branchTerm)
+        else
+            Is(branchTerm.name, match)
 
-    return branchTerm.params.foldRight(Is(branchTerm.name, match)) { nx, acc: Formula ->
+    ) { nx, acc: Formula ->
         val parameter = Function("${branchTerm.name}_${countParameter++}", listOf(match))
         And(
             acc,

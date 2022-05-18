@@ -64,6 +64,16 @@ class C{
         }
         return k;
     }
+
+    [Spec: Ensures(result == !d)]
+    Bool caseBoolSimpleSuccessMethod(Bool d){
+        Bool res = True;
+        switch(d) {
+            True =>  res = False;
+            _ =>  res = True;
+        }
+        return res;
+    }
 }
 
 {}

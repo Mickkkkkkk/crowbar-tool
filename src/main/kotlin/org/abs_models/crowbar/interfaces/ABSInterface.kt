@@ -87,6 +87,8 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
         is IfStmt -> return org.abs_models.crowbar.data.IfStmt(translateExpression(input.conditionNoTransform, returnType, subst), translateStatement(input.then, subst), translateStatement(input.`else`, subst))
         is AssertStmt -> return org.abs_models.crowbar.data.AssertStmt(translateExpression(input.condition, returnType, subst))
         is CaseStmt -> {
+            if(isGeneric(input.expr.type))
+                throw Exception("Generics not supported as match term for CaseStmt: ${input.expr}:${input.expr.type}")
             var list : List<Branch> = emptyList()
             for (br in input.branchList) {
                 val patt = translatePattern(br.left, input.expr.type, returnType, subst)
@@ -225,6 +227,8 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>)
                 SyncCallExpr(met, params)
         }
         is CaseExp ->{
+            if(isGeneric(input.expr.type))
+                throw Exception("Generics not supported as match term of CaseExpr, ${input.expr}:${input.expr.type}")
             CaseExpr(translateExpression(input.expr, returnType, subst),
                 ADTRepos.libPrefix(input.type.qualifiedName),
                 input.branchList.map {
@@ -279,7 +283,12 @@ fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, su
         is LiteralPattern -> translateExpression(pattern.literal, returnType, subst)
         is UnderscorePattern ->  FreshGenerator.getFreshProgVar(overrideType)
         is ConstructorPattern -> {
-            val qualName = if(returnType == pattern.moduleDecl.model.exceptionType) "ABS.StdLib.Exceptions.${pattern.constructor}" else typeWithModule(pattern.constructor, pattern.moduleDecl.name)
+            val qualName = if(returnType == pattern.moduleDecl.model.exceptionType) "ABS.StdLib.Exceptions.${pattern.constructor}"
+            else if(pattern.constructor == "True" || pattern.constructor == "False")
+                pattern.constructor.toLowerCase()
+            else if(pattern.type.qualifiedName.startsWith("ABS.StdLib."))
+                pattern.type.qualifiedName
+            else typeWithModule(pattern.constructor, pattern.moduleDecl.name)
             DataTypeExpr(qualName,pattern.type.qualifiedName,pattern.type,pattern.params.map { translatePattern(it,it.inhType, returnType, subst) })
         }
         else -> throw Exception("Translation of complex constructors is not supported")
