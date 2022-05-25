@@ -50,31 +50,31 @@ class BasicTest : StringSpec() {
             res shouldBe AddExpr(ProgVar("v"), Const("1"))
             assert(!containsAbstractVar(res))
         }*/
-        "Z3Test"{
-            val prog = SeqStmt(
-                    IfStmt(SExpr(">=", listOf(ProgVar("v",int), Const("0"))),
-                            AssignStmt(Field("f",int), ProgVar("v",int)),
-                            AssignStmt(Field("f",int), SExpr("-", listOf(ProgVar("v",int))))
-                    ),
-                    ReturnStmt(Field("f",int))
-            )
-
-            val input3 = SymbolicState(
-                    True,
-                    EmptyUpdate,
-                    Modality(prog, PostInvariantPair(Predicate(">=", listOf(select(Field("f",int)), Function("0"))),
-                            True)), listOf()
-            )
-
-            val strategy = nextPITStrategy(Repository(null))
-            val node = SymbolicNode(input3, emptyList())
-            strategy.execute(node)
-            println(node.debugString(0))
-            println(node.finishedExecution())
-            for(l in node.collectLeaves()){
-                println(l.evaluate())
-            }
-        }
+//        "Z3Test"{
+//            val prog = SeqStmt(
+//                    IfStmt(SExpr(">=", listOf(ProgVar("v",int), Const("0"))),
+//                            AssignStmt(Field("f",int), ProgVar("v",int)),
+//                            AssignStmt(Field("f",int), SExpr("-", listOf(ProgVar("v",int))))
+//                    ),
+//                    ReturnStmt(Field("f",int))
+//            )
+//
+//            val input3 = SymbolicState(
+//                    True,
+//                    EmptyUpdate,
+//                    Modality(prog, PostInvariantPair(Predicate(">=", listOf(select(Field("f",int)), Function("0"))),
+//                            True)), listOf()
+//            )
+//
+//            val strategy = nextPITStrategy(Repository(null))
+//            val node = SymbolicNode(input3, emptyList())
+//            strategy.execute(node)
+//            println(node.debugString(0))
+//            println(node.finishedExecution())
+//            for(l in node.collectLeaves()){
+//                println(l.evaluate())
+//            }
+//        }
         "deupdatify" {/* { v := 0 }{ v := v+1 } ((v == { v := v+1 }(v+w)) /\ { v := v+1 }!(v == w))
                           ->
                          (0+1 == (0+1+1+w)) /\ !(0+1+1 == w) */

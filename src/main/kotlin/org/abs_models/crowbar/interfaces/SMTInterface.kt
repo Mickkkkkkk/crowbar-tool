@@ -187,7 +187,10 @@ fun plainSMTCommand(smtRep: String) : String? {
 
 fun evaluateSMT(smtRep : String) : Boolean {
     val res = plainSMTCommand(smtRep)
-    return res != null && res.trim() == "unsat"
+    if(res != null && res.trim() == "unsat") return true
+    if(res != null && res.trim() == "sat") return false
+    if(res != null && res.trim() == "unknown") return false
+    throw Exception("Error during SMT evaluation: $res")
 }
 
 fun evaluateSMT(ante: Formula, succ: Formula) : Boolean {

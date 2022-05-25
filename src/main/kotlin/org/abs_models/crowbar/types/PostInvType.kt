@@ -433,8 +433,7 @@ class PITSyncCallAssign(repos: Repository) : PITAssign(repos, Modality(
 
         val anon = ElementaryUpdate(Heap, anon(Heap))
 
-        val someHeap = FreshGenerator.getFreshProgVar(Heap.concrType)
-        val heapUpdate = ChainUpdate(ElementaryUpdate(OldHeap,Heap), ElementaryUpdate(LastHeap,someHeap))
+        val heapUpdate = ChainUpdate(ElementaryUpdate(OldHeap,Heap), ElementaryUpdate(LastHeap,anon(Heap)))
 
         val updateLeftNext = ChainUpdate(input.update, ChainUpdate(heapUpdate, ChainUpdate(anon, updateNew)))
         val updateRightNext = ChainUpdate(input.update, anon)

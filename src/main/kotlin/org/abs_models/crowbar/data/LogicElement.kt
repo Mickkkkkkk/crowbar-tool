@@ -268,12 +268,14 @@ data class Ite(val condition :Formula, val term1 : Term, val term2 : Term) : Ter
                 "\n\t\t$indent${term1.toSMT("$indent\t")}" +
                 "\n\t\t$indent${term2.toSMT("$indent\t")})"
     }
+    override fun iterate(f: (Anything) -> Boolean) : Set<Anything> = super.iterate(f) + condition.iterate(f) + term1.iterate(f)+ term2.iterate(f)
 }
 
 data class Is(val typeName : String, val term : Term) :Formula{
     override fun toSMT(indent:String): String {
         return "((_ is $typeName) ${term.toSMT()})"
     }
+    override fun iterate(f: (Anything) -> Boolean) : Set<Anything> = super.iterate(f) + term.iterate(f)
 }
 
 
@@ -281,6 +283,7 @@ data class Eq(val term1: Term, val term2 : Term) : Formula{
     override fun toSMT(indent:String): String {
         return "(= ${term1.toSMT()} ${term2.toSMT()})"
     }
+    override fun iterate(f: (Anything) -> Boolean) : Set<Anything> = super.iterate(f) + term1.iterate(f)+ term2.iterate(f)
 }
 
 object True : Formula {

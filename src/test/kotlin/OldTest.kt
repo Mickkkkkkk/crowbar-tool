@@ -115,7 +115,7 @@ class OldTest : CrowbarTest() {
                 ss = classDecl.extractMethodNode(postInv, "m2", repos)
                 executeNode(ss, repos, postInv) shouldBe true
                 ss = classDecl.extractMethodNode(postInv, "m3", repos)
-                executeNode(ss, repos, postInv) shouldBe false
+                executeNode(ss, repos, postInv) shouldBe true
                 ss = classDecl.extractMethodNode(postInv, "n1", repos)
                 executeNode(ss, repos, postInv) shouldBe true
                 ss = classDecl.extractMethodNode(postInv, "n2", repos)
