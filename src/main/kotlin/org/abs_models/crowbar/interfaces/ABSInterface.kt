@@ -87,7 +87,7 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
         is IfStmt -> return org.abs_models.crowbar.data.IfStmt(translateExpression(input.conditionNoTransform, returnType, subst), translateStatement(input.then, subst), translateStatement(input.`else`, subst))
         is AssertStmt -> return org.abs_models.crowbar.data.AssertStmt(translateExpression(input.condition, returnType, subst))
         is CaseStmt -> {
-            if(isGeneric(input.expr.type))
+            if(isGeneric(input.expr.type))//Generics case check @todo:fix
                 throw Exception("Generics not supported as match term for CaseStmt: ${input.expr}:${input.expr.type}")
             var list : List<Branch> = emptyList()
             for (br in input.branchList) {
@@ -227,7 +227,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>)
                 SyncCallExpr(met, params)
         }
         is CaseExp ->{
-            if(isGeneric(input.expr.type))
+            if(isGeneric(input.expr.type)) //Generics case check @todo:fix
                 throw Exception("Generics not supported as match term of CaseExpr, ${input.expr}:${input.expr.type}")
             CaseExpr(translateExpression(input.expr, returnType, subst),
                 ADTRepos.libPrefix(input.type.qualifiedName),

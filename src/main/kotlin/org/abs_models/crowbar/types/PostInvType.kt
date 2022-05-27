@@ -741,10 +741,10 @@ class PITBranch(val repos: Repository) : Rule(Modality(
         var ress = listOf<SymbolicNode>()
         var no : Formula = True
         for(br in branches.content){
-            val preCond = Predicate("=",listOf(match, exprToTerm(br.matchTerm)))
+            val preCond = UpdateOnFormula(update, Predicate("=",listOf(match, exprToTerm(br.matchTerm))))
             // Add two scope close markers for counterexample generation (one for branch, one for switch)
             val contBody = SeqStmt(br.branch, SeqStmt(ScopeMarker, SeqStmt(ScopeMarker, cont)))
-            val ss = SymbolicState(And(no,And(input.condition, UpdateOnFormula(update, preCond))), update, Modality(contBody, type), input.exceptionScopes)
+            val ss = SymbolicState(And(no,And(input.condition, preCond)), update, Modality(contBody, type), input.exceptionScopes)
             ress = ress + SymbolicNode(ss, info = InfoBranch(matchExpr, br.matchTerm, no))
             no = And(no, Not(preCond))
         }

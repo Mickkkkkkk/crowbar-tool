@@ -1,25 +1,7 @@
 package org.abs_models.crowbar.investigator
 
-import org.abs_models.crowbar.data.And
-import org.abs_models.crowbar.data.BranchTerm
-import org.abs_models.crowbar.data.Case
-import org.abs_models.crowbar.data.DataTypeConst
-import org.abs_models.crowbar.data.False
-import org.abs_models.crowbar.data.Field
-import org.abs_models.crowbar.data.Formula
-import org.abs_models.crowbar.data.FormulaAbstractVar
+import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Function
-import org.abs_models.crowbar.data.Heap
-import org.abs_models.crowbar.data.Impl
-import org.abs_models.crowbar.data.LastHeap
-import org.abs_models.crowbar.data.Not
-import org.abs_models.crowbar.data.OldHeap
-import org.abs_models.crowbar.data.Or
-import org.abs_models.crowbar.data.Predicate
-import org.abs_models.crowbar.data.ProgVar
-import org.abs_models.crowbar.data.Term
-import org.abs_models.crowbar.data.True
-import org.abs_models.crowbar.data.binaries
 
 fun renderFormula(f: Formula, m: Map<String, String>): String {
     return when (f) {
@@ -31,6 +13,7 @@ fun renderFormula(f: Formula, m: Map<String, String>): String {
         is Impl         -> "(${renderFormula(f.left, m)}) -> (${renderFormula(f.right, m)})"
         is Predicate    -> renderPredicate(f, m)
         is FormulaAbstractVar -> f.name
+        is UpdateOnFormula -> renderFormula(apply(f.update,f.target) as Formula,m)
         else            -> throw Exception("Cannot render formula: ${f.prettyPrint()}")
     }
 }

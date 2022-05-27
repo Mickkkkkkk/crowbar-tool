@@ -74,6 +74,16 @@ class C{
         }
         return res;
     }
+
+    [Spec: Ensures(result == False)]
+    Bool localBoolVarSimpleSuccess(){
+        Bool res = True;
+        switch(res) {
+            True =>  res = False;
+            _ =>  res = True;
+        }
+        return res;
+    }
 }
 
 {}
