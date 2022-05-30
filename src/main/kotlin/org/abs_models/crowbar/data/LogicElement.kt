@@ -248,6 +248,20 @@ data class Predicate(val name : String, val params : List<Term> = emptyList()) :
             if (!param1Bound) {
                 boundParam1 = boundGeneric(getReturnType(params[0]),params[1])
             }
+
+            if(params[0] is WildCardVar) {
+                boundParam0 = boundParam1
+            } else if(params[1] is WildCardVar) {
+                boundParam1 = boundParam0
+            }
+
+
+            if(boundParam0 is DataTypeConst && boundParam1 is DataTypeConst) {
+                val concrWCPair = concretizeWildCard(boundParam0,boundParam1)
+                boundParam0 = concrWCPair.first
+                boundParam1 = concrWCPair.second
+
+            }
         }
         val list = listOf(boundParam0, boundParam1).fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
         return getSMT(name, list)
@@ -490,3 +504,19 @@ fun boundGeneric(bindingType: Type, unboundTerm: Term): Term {
         bindingType,
         bindingTypeArgs.zip(unboundTerm.params).map<Pair<Type, Term>, Term> { boundGeneric(it.first, it.second) })
 }
+
+fun concretizeWildCard(fst:DataTypeConst, snd:DataTypeConst):Pair<DataTypeConst,DataTypeConst> {
+
+    val paramsPair = fst.params.zip(snd.params).map {
+        if(it.first is WildCardVar) {
+            Pair(it.second,it.second)
+        }else if(it.second is WildCardVar) {
+            Pair(it.first,it.first)
+        } else
+        if (it.first is DataTypeConst && it.second is DataTypeConst)
+            concretizeWildCard(it.first as DataTypeConst,it.second as DataTypeConst)
+        else Pair(it.first,it.second)
+    }.unzip()
+    return Pair(DataTypeConst(fst.name,fst.concrType,paramsPair.first),DataTypeConst(snd.name,snd.concrType,paramsPair.second))
+}
+

@@ -130,6 +130,50 @@ class E(ComplexOption fieldA){
 
         return res;
     }
+    [Spec: Ensures(result == 1)]
+    Int simpleInnerWildCardSuccess(){
+        Int res = 0;
+        Type match = Type1(Type2(Type3));
+        switch(match) {
+            Type1(_) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+    [Spec: Ensures(result == 1)]
+    Int innerWildCardSuccess(){
+        Int res = 0;
+        Type match = Type1(Type2(Type3));
+        switch(match) {
+            Type1(Type2(_)) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int innerWildCardPairSuccess(){
+        Int res = 0;
+        Pair<Type,Int> match = Pair(Type2(Type3),1);
+        switch(match) {
+            Pair(Type2(_),_) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int innerWildCardPairFail(){
+        Int res = 0;
+        Pair<Type,Int> match = Pair(Type2(Type3),1);
+        switch(match) {
+            Pair(Type2(_),2) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+
 }
 
 {}

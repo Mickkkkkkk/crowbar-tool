@@ -65,6 +65,22 @@ class CaseExprTest : CrowbarTest() {
                 val patternMatchingFuncMatchSuccess =
                     classDecl.extractMethodNode(postInv, "patternMatchingFuncMatchSuccess", repos)
                 executeNode(patternMatchingFuncMatchSuccess, repos, postInv) shouldBe true
+
+                val simpleInnerWildCardSuccess =
+                    classDecl.extractMethodNode(postInv, "simpleInnerWildCardSuccess", repos)
+                executeNode(simpleInnerWildCardSuccess, repos, postInv) shouldBe true
+
+                val innerWildCardSuccess =
+                    classDecl.extractMethodNode(postInv, "innerWildCardSuccess", repos)
+                executeNode(innerWildCardSuccess, repos, postInv) shouldBe true
+
+                val innerWildCardPairSuccess =
+                    classDecl.extractMethodNode(postInv, "innerWildCardPairSuccess", repos)
+                executeNode(innerWildCardPairSuccess, repos, postInv) shouldBe true
+
+                val innerWildCardPairFail =
+                    classDecl.extractMethodNode(postInv, "innerWildCardPairFail", repos)
+                executeNode(innerWildCardPairFail, repos, postInv) shouldBe false
             }
 
             "$smt boolPatternMatching"{

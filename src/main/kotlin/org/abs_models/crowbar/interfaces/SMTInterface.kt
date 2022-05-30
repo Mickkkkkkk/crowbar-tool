@@ -48,7 +48,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     ((pre.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) } + post.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) }) as Set<DataTypeConst>).map {
         ADTRepos.addGeneric(it.concrType!! as DataTypeType) }
 
-    val vars =  ((pre.iterate { it is ProgVar} + post.iterate { it is ProgVar   }) as Set<ProgVar>).filter {it.name != "heap" && it.name !in specialHeapKeywords}
+    val vars =  ((pre.iterate { it is ProgVar && it !is WildCardVar} + post.iterate { it is ProgVar && it !is WildCardVar  }) as Set<ProgVar>).filter {it.name != "heap" && it.name !in specialHeapKeywords}
     val heaps =  ((pre.iterate { it is Function } + post.iterate{ it is Function }) as Set<Function>).filter { it.name.startsWith("NEW") }
     val funcs =  ((pre.iterate { it is Function } + post.iterate { it is Function }) as Set<Function>).filter { it.name.startsWith("f_") }
     val preSMT = pre.toSMT()

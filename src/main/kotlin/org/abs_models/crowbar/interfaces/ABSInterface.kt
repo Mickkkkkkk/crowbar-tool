@@ -87,8 +87,6 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
         is IfStmt -> return org.abs_models.crowbar.data.IfStmt(translateExpression(input.conditionNoTransform, returnType, subst), translateStatement(input.then, subst), translateStatement(input.`else`, subst))
         is AssertStmt -> return org.abs_models.crowbar.data.AssertStmt(translateExpression(input.condition, returnType, subst))
         is CaseStmt -> {
-            if(isGeneric(input.expr.type))//Generics case check @todo:fix
-                throw Exception("Generics not supported as match term for CaseStmt: ${input.expr}:${input.expr.type}")
             var list : List<Branch> = emptyList()
             for (br in input.branchList) {
                 val patt = translatePattern(br.left, input.expr.type, returnType, subst)
@@ -281,7 +279,7 @@ fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, su
         is PatternVarUse -> ProgVar(pattern.name, pattern.type)
         is PatternVar -> ProgVar(pattern.`var`.name, pattern.type)
         is LiteralPattern -> translateExpression(pattern.literal, returnType, subst)
-        is UnderscorePattern ->  FreshGenerator.getFreshProgVar(overrideType)
+        is UnderscorePattern ->  FreshGenerator.getFreshWildCard(overrideType)
         is ConstructorPattern -> {
             val qualName = if(returnType == pattern.moduleDecl.model.exceptionType) "ABS.StdLib.Exceptions.${pattern.constructor}"
             else if(pattern.constructor == "True" || pattern.constructor == "False")
