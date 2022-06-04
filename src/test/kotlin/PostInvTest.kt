@@ -1,8 +1,6 @@
 import io.kotlintest.shouldBe
 import io.kotlintest.shouldThrow
-import io.kotlintest.specs.StringSpec
 import org.abs_models.crowbar.main.*
-import org.abs_models.crowbar.types.PostInvType
 import java.nio.file.Paths
 
 class PostInvTest : CrowbarTest() {
@@ -492,6 +490,41 @@ class PostInvTest : CrowbarTest() {
 				executeNode(res, repos, postInv) shouldBe true
 				res = classDecl.extractMethodNode(postInv, "localBoolVarSimpleSuccess", repos)
 				executeNode(res, repos, postInv) shouldBe true
+
+				val simpleInnerWildCardSuccess =
+					classDecl.extractMethodNode(postInv, "simpleInnerWildCardSuccess", repos)
+				executeNode(simpleInnerWildCardSuccess, repos, postInv) shouldBe true
+
+				val innerWildCardSuccess =
+					classDecl.extractMethodNode(postInv, "innerWildCardSuccess", repos)
+				executeNode(innerWildCardSuccess, repos, postInv) shouldBe true
+
+				val innerWildCardPairSuccess =
+					classDecl.extractMethodNode(postInv, "innerWildCardPairSuccess", repos)
+				executeNode(innerWildCardPairSuccess, repos, postInv) shouldBe true
+
+				val innerWildCardPairFail =
+					classDecl.extractMethodNode(postInv, "innerWildCardPairFail", repos)
+				executeNode(innerWildCardPairFail, repos, postInv) shouldBe false
+
+				val doubleWildCardPairSuccess =
+					classDecl.extractMethodNode(postInv, "doubleWildCardPairSuccess", repos)
+				executeNode(doubleWildCardPairSuccess, repos, postInv) shouldBe true
+
+
+				val doubleWildCardPairSuccessPre =
+					classDecl.extractMethodNode(postInv, "doubleWildCardPairSuccessPre", repos)
+				executeNode(doubleWildCardPairSuccessPre, repos, postInv) shouldBe true
+
+				val fullConcrDTypeSuccess =
+					classDecl.extractMethodNode(postInv, "fullConcrDTypeSuccess", repos)
+				executeNode(fullConcrDTypeSuccess, repos, postInv) shouldBe true
+
+				val fullConcrDTypeSuccessPre =
+					classDecl.extractMethodNode(postInv, "fullConcrDTypeSuccessPre", repos)
+				executeNode(fullConcrDTypeSuccessPre, repos, postInv) shouldBe true
+
+
 			}
 
 			"$smt suspend"{

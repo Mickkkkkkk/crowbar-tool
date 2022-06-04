@@ -97,6 +97,10 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
         val list = params.fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
         return "($back $list)"
     }
+
+    fun getWildcardVars(): List<WildCardVar>{
+        return params.map { if(it is WildCardVar) setOf(it) else if(it is DataTypeConst) it.getWildcardVars() else setOf() }.flatten()
+    }
 }
 
 fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set<String>): Formula {
@@ -228,6 +232,7 @@ data class Predicate(val name : String, val params : List<Term> = emptyList()) :
         if(params.isEmpty()) return name
         var boundParam0 = params[0]
         var boundParam1 = params[1]
+        val wildCardVars= mutableListOf<WildCardVar>()
         if(name == "=") {
 
             val param0IsUnbound = params[0] is DataTypeConst && isUnboundGeneric((params[0] as DataTypeConst))
@@ -254,17 +259,19 @@ data class Predicate(val name : String, val params : List<Term> = emptyList()) :
             } else if(params[1] is WildCardVar) {
                 boundParam1 = boundParam0
             }
-
-
-            if(boundParam0 is DataTypeConst && boundParam1 is DataTypeConst) {
-                val concrWCPair = concretizeWildCard(boundParam0,boundParam1)
-                boundParam0 = concrWCPair.first
-                boundParam1 = concrWCPair.second
-
+            if(boundParam0 is DataTypeConst){
+                wildCardVars.addAll(boundParam0.getWildcardVars())
+            }
+            if(boundParam1 is DataTypeConst){
+                wildCardVars.addAll(boundParam1.getWildcardVars())
             }
         }
         val list = listOf(boundParam0, boundParam1).fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
-        return getSMT(name, list)
+        val ret = getSMT(name, list)
+        return if(wildCardVars.isEmpty())
+            ret
+        else
+            "(exists (${wildCardVars.joinToString(" ") { "(${it.name} ${genericTypeSMTName(it.concrType)})" }}) $ret)"
     }
 }
 
@@ -314,6 +321,8 @@ object False : Formula {
 }
 
 val specialHeapKeywords = mapOf(OldHeap.name to OldHeap, LastHeap.name to LastHeap)
+val specialKeywordNoHeap = setOf("match")
+val specialKeywords = specialHeapKeywords.keys + setOf("match")
 
 data class HeapType(val name: String) : Type() {
     override fun copy(): Type {
@@ -505,18 +514,4 @@ fun boundGeneric(bindingType: Type, unboundTerm: Term): Term {
         bindingTypeArgs.zip(unboundTerm.params).map<Pair<Type, Term>, Term> { boundGeneric(it.first, it.second) })
 }
 
-fun concretizeWildCard(fst:DataTypeConst, snd:DataTypeConst):Pair<DataTypeConst,DataTypeConst> {
-
-    val paramsPair = fst.params.zip(snd.params).map {
-        if(it.first is WildCardVar) {
-            Pair(it.second,it.second)
-        }else if(it.second is WildCardVar) {
-            Pair(it.first,it.first)
-        } else
-        if (it.first is DataTypeConst && it.second is DataTypeConst)
-            concretizeWildCard(it.first as DataTypeConst,it.second as DataTypeConst)
-        else Pair(it.first,it.second)
-    }.unzip()
-    return Pair(DataTypeConst(fst.name,fst.concrType,paramsPair.first),DataTypeConst(snd.name,snd.concrType,paramsPair.second))
-}
 

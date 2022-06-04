@@ -45,6 +45,8 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
             }
         }
         is VarDeclStmt -> {
+
+            if(input.varDecl.name in specialKeywords) throw Exception("VarDecl cannot be named with special keywords: $input")
             val loc = ProgVar(input.varDecl.name, input.varDecl.type)
             return when(val exp = input.varDecl.initExp ?: NullExp()) {
                 is GetExp       -> SyncStmt(loc, translateExpression(exp, returnType, subst), extractResolves(input), FreshGenerator.getFreshPP())
@@ -120,6 +122,7 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
 fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>) : Expr {
     val converted = when(input){
         is FieldUse -> {
+            if(input.name in specialKeywords) throw Exception("Fields cannot be named with special keywords: $input")
             if(input.contextDecl is InterfaceDecl)
                 throw Exception("fields cannot be referred to in the declaration of interfaces: " +
                         "field $input is referred to in the declaration of ${input.contextDecl.name}")
@@ -138,6 +141,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>)
         is NullExp         -> Const("0", input.model.intType)
         is ThisExp         -> Const("1", input.model.intType)
         is VarUse -> {
+            if(input.name in specialKeywords) throw Exception("VarUse cannot be named with special keywords: $input")
             if (input.name == "result") {
                 if (returnType.isUnknownType)
                     throw Exception("result type cannot be <UNKNOWN>")
@@ -192,28 +196,33 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>)
             }
         }
         is FnApp ->
+            if(input.name in specialKeywordNoHeap) {
+                throw Exception("FnApp cannot be named with special keywords: ${input.name}")
+            } else {
             if (input.name == "valueOf")
                 readFut(translateExpression(input.params.getChild(0), returnType, subst))
-            else if(input.name in FunctionRepos.functionPairTriple) {
+            else if (input.name in FunctionRepos.functionPairTriple) {
                 SExpr(input.name, input.params.map { translateExpression(it, returnType, subst) })
-            }
-            else if(input.name == "abs")
+            } else if (input.name == "abs")
                 SExpr(input.name, input.params.map { translateExpression(it, returnType, subst) })
             else if (input.name == "hasRole") {
-                val roleConst = Const("\"${(input.params.getChild(1) as StringLiteral).content}\"", input.model.stringType)
+                val roleConst =
+                    Const("\"${(input.params.getChild(1) as StringLiteral).content}\"", input.model.stringType)
                 val field = translateExpression(input.params.getChild(0), returnType, subst)
                 SExpr("hasRole", listOf(field, roleConst))
-            }
-            else if (input.decl is UnknownDecl) {
+            } else if (input.decl is UnknownDecl) {
                 if (specialHeapKeywords.containsKey(input.name))
                     SExpr(input.name, input.params.map { translateExpression(it, returnType, subst) })
                 else
                     throw Exception("Unknown declaration of function ${input.name}")
             } else if (FunctionRepos.isKnown(input.decl.qualifiedName)) {
-                SExpr(input.decl.qualifiedName.replace(".", "-"), input.params.map { translateExpression(it, returnType, subst) })
-            } else if(input.decl.qualifiedName == "ABS.StdLib.random"){
+                SExpr(
+                    input.decl.qualifiedName.replace(".", "-"),
+                    input.params.map { translateExpression(it, returnType, subst) })
+            } else if (input.decl.qualifiedName == "ABS.StdLib.random") {
                 FreshGenerator.getFreshProgVar(input.model.intType)
             } else throw Exception("Translation of FnApp is not fully supported, term is $input with function ${input.decl.qualifiedName}")
+        }
         is IfExp -> SExpr("ite", listOf(translateExpression(input.condExp, returnType, subst),translateExpression(input.thenExp, returnType, subst),translateExpression(input.elseExp, returnType, subst)))
         is Call -> {
             val met = input.methodSig.contextDecl.qualifiedName+"."+input.methodSig.name

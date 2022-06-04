@@ -1,6 +1,7 @@
 module M;
 
 
+data Type = Type1(Type t) | Type2 (Type t) |Type3;
 class C{
 
     [Spec: Ensures(result != 0)] //success
@@ -81,6 +82,96 @@ class C{
         switch(res) {
             True =>  res = False;
             _ =>  res = True;
+        }
+        return res;
+    }
+
+
+    [Spec: Ensures(result == 1)]
+    Int simpleInnerWildCardSuccess(){
+        Int res = 0;
+        Type x = Type1(Type2(Type3));
+        switch(x) {
+            Type1(_) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int fullConcrDTypeSuccess(){
+        Int res = 0;
+        Type x = Type1(Type2(Type3));
+        switch(x) {
+            Type1(Type2(Type3)) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Requires(x == Type1(Type2(Type3)))]
+    [Spec: Ensures(result == 1)]
+    Int fullConcrDTypeSuccessPre(Type x){
+        Int res = 0;
+        switch(x) {
+            Type1(Type2(Type3)) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int innerWildCardSuccess(){
+        Int res = 0;
+        Type x = Type1(Type2(Type3));
+        switch(x) {
+            Type1(Type2(_)) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int innerWildCardPairSuccess(){
+        Int res = 0;
+        Pair<Type,Int> x = Pair(Type2(Type3),1);
+        switch(x) {
+            Pair(Type2(_),_) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int innerWildCardPairFail(){
+        Int res = 0;
+        Pair<Type,Int> x = Pair(Type2(Type3),1);
+        switch(x) {
+            Pair(Type2(_),2) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int doubleWildCardPairSuccess(){
+        Int res = 0;
+        Pair<Type,Int> x = Pair(Type2(Type3),1);
+        switch(x) {
+            Pair(Type2(_),_) =>  res = 1;
+            _ =>  res = res;
+        }
+        return res;
+    }
+
+
+    [Spec: Requires(x == Pair(Type2(Type3),1))]
+    [Spec: Ensures(result == 1)]
+    Int doubleWildCardPairSuccessPre(Pair<Type, Int> x){
+        Int res = 0;
+        switch(x) {
+            Pair(Type2(_),_) =>  res = 1;
+            _ =>  res = res;
         }
         return res;
     }
