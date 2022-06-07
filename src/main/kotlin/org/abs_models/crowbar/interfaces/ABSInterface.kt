@@ -201,10 +201,9 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>)
             } else {
             if (input.name == "valueOf")
                 readFut(translateExpression(input.params.getChild(0), returnType, subst))
-            else if (input.name in FunctionRepos.functionPairTriple) {
+            else if (input.name in FunctionRepos.builtInFunctionNames) {
                 SExpr(input.name, input.params.map { translateExpression(it, returnType, subst) })
-            } else if (input.name == "abs")
-                SExpr(input.name, input.params.map { translateExpression(it, returnType, subst) })
+            }
             else if (input.name == "hasRole") {
                 val roleConst =
                     Const("\"${(input.params.getChild(1) as StringLiteral).content}\"", input.model.stringType)

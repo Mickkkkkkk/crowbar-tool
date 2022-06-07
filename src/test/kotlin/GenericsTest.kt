@@ -114,6 +114,15 @@ class GenericsTest : CrowbarTest() {
                 val wrappedOldSuccess = classDecl.extractMethodNode(postInv, "wrappedOldSuccess", repos)
                 executeNode(wrappedOldSuccess, repos, postInv) shouldBe true
 
+                val headSimpleSuccess = classDecl.extractMethodNode(postInv, "headSimpleSuccess", repos)
+                executeNode(headSimpleSuccess, repos, postInv) shouldBe true
+
+                val tailSimpleSuccess = classDecl.extractMethodNode(postInv, "tailSimpleSuccess", repos)
+                executeNode(tailSimpleSuccess, repos, postInv) shouldBe true
+
+                val headTailSimpleSuccess = classDecl.extractMethodNode(postInv, "headTailSimpleSuccess", repos)
+                executeNode(headTailSimpleSuccess, repos, postInv) shouldBe true
+
             }
 
             "$smt triple"{

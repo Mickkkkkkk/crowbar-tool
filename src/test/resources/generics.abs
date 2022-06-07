@@ -168,6 +168,29 @@ class ListClass(List<Type> list, Type ft){
         this.list = Cons(Type2, Nil);
     }
 
+    [Spec: Requires(x == Cons(1, Nil))]
+    [Spec: Ensures(result == 1)]
+    Int headSimpleSuccess(List<Int> x){
+        Int res = head(x);
+        return res;
+    }
+
+    [Spec: Requires(x == Cons(1, Cons(2, Nil)))]
+    [Spec: Ensures(result == Cons(2, Nil))]
+    List<Int> tailSimpleSuccess(List<Int> x){
+        List<Int> res = tail(x);
+        return res;
+    }
+
+    [Spec: Requires(x == Cons(1, Cons(2, Nil)))]
+    [Spec: Ensures(result == 2)]
+    Int headTailSimpleSuccess(List<Int> x){
+        Int res = head(tail(x));
+        return res;
+    }
+
+
+
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){

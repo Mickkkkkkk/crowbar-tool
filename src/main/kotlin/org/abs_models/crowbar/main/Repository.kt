@@ -195,8 +195,10 @@ object FunctionRepos{
 
 	val functionPair = listOf("fst","snd")
 	val functionTriple = setOf("fstT","sndT","trdT")
+	val functionList = setOf("head","tail")
 	val functionPairTriple = functionTriple.union(functionPair)
-    val known : MutableMap<String, FunctionDecl> = mutableMapOf()
+	val builtInFunctionNames = functionPairTriple.union(setOf("abs")).union(functionList)
+	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
 
     fun isKnown(str: String) = known.containsKey(str)

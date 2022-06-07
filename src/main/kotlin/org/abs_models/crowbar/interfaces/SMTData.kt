@@ -59,6 +59,14 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
                                 if(dTypeDecl.type.simpleName == "Pair" || dTypeDecl.type.simpleName == "Triple")
                                     argsPairTriple(count++,dTypeDecl.type as DataTypeType)
                                 else
+                                if(dTypeDecl.type.simpleName == "List") {
+                                    when (count++) {
+                                        0->"head"
+                                        1->"tail"
+                                        else -> throw Exception("Unsupported Definition of List: $dTypeDecl")
+                                    }
+                                }
+                                else
                                 "${dataConstructor.qualifiedName}_${count++}",
                                 listOf(
                                     Function(
@@ -70,6 +78,13 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
                             )
                         } else {
                             ArgsSMT(
+                                if(dTypeDecl.type.simpleName == "List") {
+                                    when (count++) {
+                                        0->"head"
+                                        1->"tail"
+                                        else -> throw Exception("Unsupported Definition of List: $dTypeDecl")
+                                    }
+                                }else
                                 "${dataConstructor.qualifiedName}_${count++}",
                                 listOf(
                                     Function(it.type.qualifiedName + "_" +
