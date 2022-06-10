@@ -4,6 +4,7 @@ import org.abs_models.crowbar.interfaces.*
 import org.abs_models.crowbar.main.ADTRepos
 import org.abs_models.crowbar.main.FunctionRepos
 import org.abs_models.crowbar.types.getReturnType
+import org.abs_models.frontend.ast.CaseExp
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
 
@@ -133,6 +134,7 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
     private lateinit var wildCardName: String
 
     override fun toSMT(indent:String): String {
+
         if (branches.isNotEmpty() ){
             if(!::wildCardName.isInitialized)
                 wildCardName = createWildCard(expectedType,expectedTypeConcr)
@@ -142,23 +144,32 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
             val firstMatchTerm = Function(wildCardName)
 
             val branchTerm = branches.foldRight(firstMatchTerm as Term) { branchTerm: BranchTerm, acc: Term ->
-                var indexOfParam = -1
-                val matchSMT =
-                    if (branchTerm.matchTerm is DataTypeConst)
-                        extractPatternMatching(match, branchTerm.matchTerm, freeVars)
-                    else if (branchTerm.matchTerm is ProgVar && branchTerm.matchTerm.name in freeVars)
-                        Eq(match, branchTerm.matchTerm)
-                    else
-                        True
-                if (branchTerm.matchTerm is DataTypeConst) {
-                    indexOfParam = branchTerm.matchTerm.params.indexOf(branchTerm.branch)
+                if(branchTerm.matchTerm is DataTypeConst && isGeneric(branchTerm.matchTerm.concrType)){
+                    val matchSMT =  Predicate("=", listOf( match, branchTerm.matchTerm))
+                    val branch = branchTerm.branch
+                    Ite(matchSMT, branch, acc)
+                }else
+                {
+                    var indexOfParam = -1
+                    val matchSMT =
+                        if (branchTerm.matchTerm is DataTypeConst)
+                            extractPatternMatching(match, branchTerm.matchTerm, freeVars)
+                        else if (branchTerm.matchTerm is ProgVar && branchTerm.matchTerm.name in freeVars)
+                            Eq(match, branchTerm.matchTerm)
+                        else
+                            True
+                    if (branchTerm.matchTerm is DataTypeConst) {
+                        indexOfParam = branchTerm.matchTerm.params.indexOf(branchTerm.branch)
+                    }
+                    val branch =
+                        if (branchTerm.matchTerm is DataTypeConst && indexOfParam != -1)
+                            Function("${branchTerm.matchTerm.name}_$indexOfParam", listOf(match))
+                        else
+                            branchTerm.branch
+
+
+                    Ite(matchSMT, branch, acc)
                 }
-                val branch =
-                    if (branchTerm.matchTerm is DataTypeConst && indexOfParam != -1)
-                        Function("${branchTerm.matchTerm.name}_$indexOfParam", listOf(match))
-                    else
-                        branchTerm.branch
-                Ite(matchSMT, branch, acc)
             }
             return branchTerm.toSMT()
 
@@ -218,7 +229,7 @@ data class Not(val left : Formula) : Formula {
     override fun iterate(f: (Anything) -> Boolean) : Set<Anything> = super.iterate(f) + left.iterate(f)
     override fun toSMT(indent:String) : String = "(not ${left.toSMT()})"
 }
-data class Predicate(val name : String, val params : List<Term> = emptyList()) : Formula {
+class Predicate(val name : String, val params : List<Term> = emptyList()) : Formula {
     override fun prettyPrint(): String {
         return prettyPrintFunction(params, name)
     }
@@ -273,6 +284,13 @@ data class Predicate(val name : String, val params : List<Term> = emptyList()) :
         else
             "(exists (${wildCardVars.joinToString(" ") { "(${it.name} ${genericTypeSMTName(it.concrType)})" }}) $ret)"
     }
+
+    override fun equals(other: Any?): Boolean {
+        return other is Predicate &&
+                other.name == name &&
+                other.params == params
+    }
+
 }
 
 data class UpdateOnFormula(val update : UpdateElement, val target : Formula) : Formula {

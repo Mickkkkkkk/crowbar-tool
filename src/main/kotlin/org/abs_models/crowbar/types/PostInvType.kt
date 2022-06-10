@@ -114,7 +114,7 @@ interface PostInvType : DeductType{
         for (fieldDecl in classDecl.fields){
             if(fieldDecl.hasInitExp()){
                 val nextBody = AssignStmt(Field(fieldDecl.name+"_f", fieldDecl.type),
-                        translateExpression(fieldDecl.initExp, UnknownType.INSTANCE, emptyMap()))
+                        translateExpression(fieldDecl.initExp, UnknownType.INSTANCE, emptyMap(), true).first) //todo: check!
                 body = SeqStmt(nextBody,body)
             }
         }
@@ -161,7 +161,7 @@ interface PostInvType : DeductType{
             if(fDef is BuiltinFunctionDef){
                 throw Exception("error during translation, cannot handle builtin yet")
             }else if(fDef is ExpFunctionDef){
-                body = ReturnStmt(translateExpression(fDef.rhs, fDecl.type, emptyMap()))
+                body = ReturnStmt(translateExpression(fDef.rhs, fDecl.type, emptyMap(),true).first)
             }
         }catch (e: Exception) {
             e.printStackTrace()

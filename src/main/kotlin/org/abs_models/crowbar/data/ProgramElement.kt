@@ -143,7 +143,7 @@ data class BranchAbstractListVar(val name : String) : AbsBranchList, AbstractVar
 
 data class BranchStmt(val match : Expr, val branches : AbsBranchList) : Stmt {
     override fun prettyPrint(): String {
-        return "case ${match.prettyPrint()}{ ${branches.prettyPrint() }"
+        return "case ${match.prettyPrint()}{ ${branches.prettyPrint() }}"
     }
     override fun iterate(f: (Anything) -> Boolean) : Set<Anything> =
         branches.iterate(f)

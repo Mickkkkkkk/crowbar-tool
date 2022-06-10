@@ -103,7 +103,7 @@ fun<T : ASTNode<out ASTNode<*>>?> extractSpec(decl : ASTNode<T>, expectedSpec : 
             }
             val annotated = annotation.value as DataConstructorExp
             if(annotated.constructor != expectedSpec) continue
-            val next = exprToForm(translateExpression(annotated.getParam(0) as Exp,decl.type, emptyMap()))
+            val next = exprToForm(translateExpression(annotated.getParam(0) as Exp,decl.type, emptyMap(),true).first) //todo:check!
             ret = if(ret == null) next else And(ret, next)
             if(!multipleAllowed) break
         }
@@ -117,7 +117,7 @@ fun<T : ASTNode<out ASTNode<*>>?> extractSpec(decl : ASTNode<T>, expectedSpec : 
             }
             val annotated = annotation.value as DataConstructorExp
             if(annotated.constructor != expectedSpec) continue
-            val next = exprToForm(translateExpression(annotated.getParam(0) as Exp,returnType, emptyMap()))
+            val next = exprToForm(translateExpression(annotated.getParam(0) as Exp,returnType, emptyMap(),true).first)//todo:check!
             ret = if(ret == null) next else And(ret, next)
             if(!multipleAllowed) break
         }
@@ -229,9 +229,9 @@ fun executeNode(node : SymbolicNode, repos: Repository, usedType: KClass<out Ded
     output(node.debugString(0),Verbosity.V)
 
     if(!node.finishedExecution()){
-        System.err.println("could not finish symbolic execution")
         println(node.debugString(0))
-        exitProcess(-1)
+        throw Exception("could not finish symbolic execution")
+//        exitProcess(-1)
     }
 
     output("Crowbar  : closing open branches....")

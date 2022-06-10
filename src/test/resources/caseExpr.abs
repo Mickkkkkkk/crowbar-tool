@@ -31,6 +31,14 @@ def Bool caseBoolSimpleSuccessMethod(Bool d) =
         _ =>  True;
     };
 
+[Spec: Requires(pair==Pair(1,1))]
+[Spec: Ensures(result == 1)]
+def Int pairPartialMatchSimpleSuccess(Pair<Int,Int> pair) = case pair {Pair(1,_) => 1;};
+
+//verifiable with z3
+[Spec: Ensures(result == 1)]
+def Int pairWildcardsNoPreSimpleSuccess(Pair<Int,Int> pair) = case pair {Pair(_,_) => 1;};
+
 class E(ComplexOption fieldA){
 
     [Spec : Requires( i == 1 )]
@@ -129,6 +137,26 @@ class E(ComplexOption fieldA){
         };
 
         return res;
+    }
+
+    [Spec:Ensures(result > 0)]
+    Int nestedCaseExprsSuccess(Int x,Int y){
+        return case (x) { 1=> 1; 2=>case(y){ 1=>1;_ => 2}; _ => 1};
+    }
+
+    [Spec:Ensures(result ==0)]
+    Int nestedCaseExprsFail(Int x,Int y){
+        return case (x) { 1=> 1; 2=>case(y){ 1=>1;_ => 2}; _ => 1};
+    }
+
+    [Spec:Ensures(result == 1)]
+    Int nestedIfCaseExprsSuccess(Int x,Int y){
+        Int i = 0;
+        if( case (x) { 1=> 1; 2=>case(y){ 1=>1;_ => 2}; _ => 1} > 0)
+            i = 1;
+        else
+            i = 0;
+        return i;
     }
 
 

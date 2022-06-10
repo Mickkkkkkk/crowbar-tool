@@ -75,6 +75,35 @@ class CaseExprTest : CrowbarTest() {
                 executeNode(caseBoolSimpleSuccessFuncDecl, repos, postInv) shouldBe true
 
             }
+
+
+            "$smt nested"{
+                smtPath = smt
+                val (model, repos) = load(listOf(Paths.get("src/test/resources/caseExpr.abs")))
+                val classDecl = model.extractClassDecl("CaseExpr", "E")
+                val nestedCaseExprSuccess =  classDecl.extractMethodNode(postInv, "nestedCaseExprsSuccess", repos)
+                executeNode(nestedCaseExprSuccess, repos, postInv) shouldBe true
+                val nestedCaseExprFail =  classDecl.extractMethodNode(postInv, "nestedCaseExprsFail", repos)
+                executeNode(nestedCaseExprFail, repos, postInv) shouldBe false
+
+                val nestedIfCaseExprsSuccess =  classDecl.extractMethodNode(postInv, "nestedIfCaseExprsSuccess", repos)
+                executeNode(nestedIfCaseExprsSuccess, repos, postInv) shouldBe true
+
+            }
+
+
+            "$smt generics"{
+                smtPath = smt
+                val (model, repos) = load(listOf(Paths.get("src/test/resources/caseExpr.abs")))
+				val pairPartialMatchSimpleSuccess = model.extractFunctionDecl("CaseExpr", "pairPartialMatchSimpleSuccess").exctractFunctionNode(postInv)
+				executeNode(pairPartialMatchSimpleSuccess, repos, postInv) shouldBe true
+            }
+        }
+        "z3 wildcards-no-precondition"{
+            smtPath = z3
+            val (model, repos) = load(listOf(Paths.get("src/test/resources/caseExpr.abs")))
+            val pairWildcardsNoPreSimpleSuccess = model.extractFunctionDecl("CaseExpr", "pairWildcardsNoPreSimpleSuccess").exctractFunctionNode(postInv)
+            executeNode(pairWildcardsNoPreSimpleSuccess, repos, postInv) shouldBe true
         }
     }
 }
