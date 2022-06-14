@@ -121,7 +121,7 @@ object CounterexampleGenerator {
     ): Model {
 
         // "heap", "old", "last", function names etc. do not reference program vars
-        val functionNames = FunctionRepos.known.map { it.key.replace(".", "-") }
+        val functionNames = FunctionRepos.known.map { FunctionRepos.functionNameSMT(it.value) }
         val allTypes = ADTRepos.getAllTypePrefixes()
         val reservedVarNameStems = listOf("heap", "Something") + specialHeapKeywords.values.map { it.name }
         val reservedVarNames = allTypes.map { tpe -> reservedVarNameStems.map { stem -> "${stem}_${tpe.replace(".","_")}" } }.flatten() + functionNames + listOf("Unit")

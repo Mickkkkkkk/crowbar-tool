@@ -4,7 +4,6 @@ import org.abs_models.crowbar.interfaces.*
 import org.abs_models.crowbar.main.ADTRepos
 import org.abs_models.crowbar.main.FunctionRepos
 import org.abs_models.crowbar.types.getReturnType
-import org.abs_models.frontend.ast.CaseExp
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
 
@@ -74,7 +73,7 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
 
 fun isGeneric(type : Type?) : Boolean = type != null && !type.isFutureType && type is DataTypeType && type.numTypeArgs() > 0
 fun isConcreteGeneric(type: Type?) :Boolean = isGeneric(type) && ((type as DataTypeType).typeArgs.isEmpty() || type.typeArgs.all{ x -> !x.isTypeParameter && (!isGeneric(x) || isConcreteGeneric(x))})
-fun isNotWellKnown(dataTypeConst:DataTypeConst) = dataTypeConst.toString().contains("<UNKNOWN>")
+fun isNotWellKnown(dataTypeConst:DataTypeConst) = dataTypeConst.concrType.toString().contains("<UNKNOWN>")
 fun isUnboundGeneric(dataTypeConst:DataTypeConst) : Boolean = isGeneric(dataTypeConst.concrType) && dataTypeConst.toString().contains("Unbound Type")
 fun isBoundGeneric(type : Type?) : Boolean = isGeneric(type) && !(type as DataTypeType).toString().contains("Unbound Type")
 
@@ -86,7 +85,7 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
     }
 
     override fun prettyPrint(): String =
-        name + ":" + concrType!!.qualifiedName+"("+params.map { p -> p.prettyPrint() }.fold("") { acc, nx -> "$acc,$nx" }
+        name + ":" + concrType!!+"("+params.map { p -> p.prettyPrint() }.fold("") { acc, nx -> "$acc,$nx" }
             .removePrefix(",") + ")"
 
     override fun iterate(f: (Anything) -> Boolean) : Set<Anything> = params.fold(super.iterate(f)) { acc, nx ->  acc + nx.iterate(f) }
@@ -241,42 +240,18 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
 
     override fun toSMT(indent:String) : String {
         if(params.isEmpty()) return name
-        var boundParam0 = params[0]
-        var boundParam1 = params[1]
+        val boundTerms = boundTerms(params[0],params[1])
+        val boundParam0 = boundTerms.first
+        val boundParam1 = boundTerms.second
         val wildCardVars= mutableListOf<WildCardVar>()
-        if(name == "=") {
 
-            val param0IsUnbound = params[0] is DataTypeConst && isUnboundGeneric((params[0] as DataTypeConst))
-            val param1IsUnbound = params[1] is DataTypeConst && isUnboundGeneric((params[1] as DataTypeConst))
-            val param0NotWellKnown = params[0] is DataTypeConst && isNotWellKnown((params[0] as DataTypeConst))
-            val param1NotWellKnown = params[1] is DataTypeConst && isNotWellKnown((params[1] as DataTypeConst))
-
-            val param0Bound = !param0IsUnbound && !param0NotWellKnown
-            val param1Bound = !param1IsUnbound && !param1NotWellKnown
-
-            if((param0NotWellKnown && param1NotWellKnown) || (param0IsUnbound && param1NotWellKnown) || (param0NotWellKnown && param1IsUnbound))
-                throw Exception("Impossible to bind type: \n$boundParam0 and \n$boundParam1")
-
-            if(param0Bound || param1Bound)
-            if (!param0Bound) {
-                boundParam0 = boundGeneric(getReturnType(params[1]),params[0])
-            }
-            if (!param1Bound) {
-                boundParam1 = boundGeneric(getReturnType(params[0]),params[1])
-            }
-
-            if(params[0] is WildCardVar) {
-                boundParam0 = boundParam1
-            } else if(params[1] is WildCardVar) {
-                boundParam1 = boundParam0
-            }
-            if(boundParam0 is DataTypeConst){
-                wildCardVars.addAll(boundParam0.getWildcardVars())
-            }
-            if(boundParam1 is DataTypeConst){
-                wildCardVars.addAll(boundParam1.getWildcardVars())
-            }
+        if(boundParam0 is DataTypeConst){
+            wildCardVars.addAll(boundParam0.getWildcardVars())
         }
+        if(boundParam1 is DataTypeConst){
+            wildCardVars.addAll(boundParam1.getWildcardVars())
+        }
+
         val list = listOf(boundParam0, boundParam1).fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
         val ret = getSMT(name, list)
         return if(wildCardVars.isEmpty())
@@ -400,9 +375,8 @@ fun exprToTerm(input : Expr, specialKeyword : String="NONE") : Term {
             else
                 Function(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
         }
-        is DataTypeExpr -> {
-            DataTypeConst(input.name, input.concrType, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
-        }
+        is DataTypeExpr -> DataTypeConst(input.name, input.concrType, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
+
         is CaseExpr -> {
             val match =exprToTerm(input.match)
             Case(match, input.expectedType, input.content.map { ex -> BranchTerm(exprToTerm(ex.matchTerm, specialKeyword), exprToTerm(ex.branch, specialKeyword)) },input.freeVars,input.expectedTypeConcr)
@@ -429,6 +403,13 @@ fun exprToForm(input : Expr, specialKeyword : String="NONE") : Formula {
             } else
                 throw Exception("Special keywords must have one argument, actual arguments size:" + input.e.size)
         }
+//        return if(input.op != "=") Predicate(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
+//            else{
+//
+//            val params = input.e.map { ex -> exprToTerm(ex, specialKeyword) }
+//            val boundedTerms = boundTerms(params[0],params[1])
+//                Predicate(input.op, listOf(boundedTerms.first,boundedTerms.second))
+//            }
         return Predicate(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
     }
     if(input is Field || input is ProgVar || input is Const)
@@ -502,7 +483,6 @@ fun prettyPrintFunction(params: List<Term>, name: String):String{
 }
 
 fun boundGeneric(bindingType: Type, unboundTerm: Term): Term {
-    println("boundGeneric::: $bindingType $unboundTerm")
     if (unboundTerm is Function)
         return unboundTerm
     if (unboundTerm is ProgVar)
@@ -532,4 +512,33 @@ fun boundGeneric(bindingType: Type, unboundTerm: Term): Term {
         bindingTypeArgs.zip(unboundTerm.params).map<Pair<Type, Term>, Term> { boundGeneric(it.first, it.second) })
 }
 
+
+fun boundTerms(term1:Term, term2: Term):Pair<Term,Term>{
+    var boundTerm1 = term1
+    var boundTerm2 = term2
+
+    val term1IsUnbound = term1 is DataTypeConst && isUnboundGeneric(term1)
+    val term2IsUnbound = term2 is DataTypeConst && isUnboundGeneric(term2)
+    val term1NotWellKnown = term1 is DataTypeConst && isNotWellKnown(term1)
+    val term2NotWellKnown = term2 is DataTypeConst && isNotWellKnown(term2)
+
+    if((term1NotWellKnown && term2NotWellKnown))
+        throw Exception("Impossible to bind type: \n$boundTerm1 and \n$boundTerm2")
+    val term1fullyBounded = !term1IsUnbound && !term1NotWellKnown
+    val term2fullyBounded = !term2IsUnbound && !term2NotWellKnown
+
+    if((!term1fullyBounded && !term2NotWellKnown)){
+        boundTerm1 = boundGeneric(getReturnType(term2), term1)
+    }else if(!term2fullyBounded ) {
+        boundTerm2 = boundGeneric(getReturnType(term1), term2)
+    }
+
+    if(term1 is WildCardVar) {
+        boundTerm1 = boundTerm2
+    } else if(term2 is WildCardVar) {
+        boundTerm2 = boundTerm1
+    }
+
+    return Pair(boundTerm1,boundTerm2)
+}
 

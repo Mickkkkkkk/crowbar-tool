@@ -24,7 +24,7 @@ object ADTRepos {
 	var model:Model? = null
 
 	private val dtypeMap: MutableMap<String, HeapDecl> = mutableMapOf()
-	val dTypesDecl = mutableListOf<DataTypeDecl>()
+	val dTypesDecl = mutableSetOf<DataTypeDecl>()
 	val primitiveDtypesDecl = mutableListOf<DataTypeDecl>()
 	val exceptionDecl = mutableListOf<ExceptionDecl>()
 	val interfaceDecl = mutableListOf<InterfaceDecl>()
@@ -95,9 +95,9 @@ object ADTRepos {
 	}
 
 	fun genericsToSMT() :String{
-		val names = mutableListOf<ArgsSMT>()
-		val decls = mutableListOf<ArgSMT>()
-		val valueOf = mutableListOf<FunctionDeclSMT>()
+		val names = mutableSetOf<ArgsSMT>()
+		val decls = mutableSetOf<ArgSMT>()
+		val valueOf = mutableSetOf<FunctionDeclSMT>()
 
 		concreteGenerics.values.map{
 			val map = (it.decl.type as DataTypeType).typeArgs.zip(it.typeArgs).toMap()
@@ -108,7 +108,7 @@ object ADTRepos {
 		}
 		val decl = Function(
 			"declare-datatypes", (
-					listOf(ArgSMT(names), ArgSMT(decls))))
+					listOf(ArgSMT(names.toList()), ArgSMT(decls.toList()))))
 		return if(names.isNotEmpty())
 			decl.toSMT() + "\n${valueOf.joinToString("") { it.toSMT("\n") }}"
 		else
@@ -141,11 +141,11 @@ object ADTRepos {
 	}
 
 	fun dTypesToSMT() :String{
-		return DataTypesDecl(dTypesDecl, exceptionDecl,interfaceDecl).toSMT()
+		return DataTypesDecl(dTypesDecl.toList(), exceptionDecl,interfaceDecl).toSMT()
 	}
 
 	override fun toString() : String {
-		return DataTypesDecl(dTypesDecl, exceptionDecl,interfaceDecl).toSMT()
+		return DataTypesDecl(dTypesDecl.toList(), exceptionDecl,interfaceDecl).toSMT()
 	}
 
 	fun initBuiltIn(){
@@ -217,7 +217,7 @@ object FunctionRepos{
 
 				if(pair.value is ParametricFunctionDecl)
 					throw Exception("Parametric functions are not supported, please flatten your model")
-			    val name = pair.key.replace(".", "-")
+			    val name = functionNameSMT(pair.value)
 			    val params = pair.value.params
 				val paramTypes = params.map{
 					it.type
@@ -278,9 +278,8 @@ object FunctionRepos{
 			    var defs = ""
 			    for (pair in direct) {
 				    val params = pair.value.params
-				    val eDef: ExpFunctionDef = pair.value.functionDef as ExpFunctionDef
-				    val def = eDef.rhs
-					sigs += "\t(${pair.key.replace(".", "-")} (${params.fold("") { acc, nx ->
+					val def =  pair.value.functionDef.getChild(0) as PureExp
+					sigs += "\t(${functionNameSMT(pair.value)} (${params.fold("") { acc, nx ->
 						"$acc (${nx.name} ${
 
 							if (isConcreteGeneric(nx.type)) {
@@ -345,6 +344,10 @@ object FunctionRepos{
 		val concreteTypes = genericType.typeArgs.map { gT :Type -> if(gT in mapGenericConcrete) mapGenericConcrete[gT] else gT }
 		val additionalName = concreteTypes.joinToString("_") { cT -> genericTypeSMTName(cT!!) }
 		return "${function.name}_$additionalName"
+	}
+
+	fun functionNameSMT(functionDecl: FunctionDecl):String{
+		return functionDecl.qualifiedName.replace(".", "-")
 	}
 }
 

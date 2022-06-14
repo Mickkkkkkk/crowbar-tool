@@ -39,6 +39,15 @@ class GenericsTest : CrowbarTest() {
                 val wrappedOldSuccess = classDecl.extractMethodNode(postInv, "wrappedOldSuccess", repos)
                 executeNode(wrappedOldSuccess, repos, postInv) shouldBe true
 
+                val returnNothingSimpleSuccess = classDecl.extractMethodNode(postInv, "returnNothingSimpleSuccess", repos)
+                executeNode(returnNothingSimpleSuccess, repos, postInv) shouldBe true
+
+
+                val returnNothingWrapPostSimpleSuccess = classDecl.extractMethodNode(postInv, "returnNothingWrapPostSimpleSuccess", repos)
+                executeNode(returnNothingWrapPostSimpleSuccess, repos, postInv) shouldBe true
+
+                val returnNothingWrapWrapPostSimpleSuccess = classDecl.extractMethodNode(postInv, "returnNothingWrapWrapPostSimpleSuccess", repos)
+                executeNode(returnNothingWrapWrapPostSimpleSuccess, repos, postInv) shouldBe true
             }
 
             "$smt pair"{
@@ -123,6 +132,10 @@ class GenericsTest : CrowbarTest() {
                 val headTailSimpleSuccess = classDecl.extractMethodNode(postInv, "headTailSimpleSuccess", repos)
                 executeNode(headTailSimpleSuccess, repos, postInv) shouldBe true
 
+
+                val returnNilSuccess = classDecl.extractMethodNode(postInv, "returnNilSuccess", repos)
+                executeNode(returnNilSuccess, repos, postInv) shouldBe true
+
             }
 
             "$smt triple"{
@@ -132,7 +145,7 @@ class GenericsTest : CrowbarTest() {
                 val classDecl = model.extractClassDecl("Generics", "TripleClass")
 
                 val trivialSuccess = classDecl.extractMethodNode(postInv, "trivialSuccess", repos)
-                executeNode(trivialSuccess, repos, postInv) shouldBe true//trivialWrapResultSuccess
+                executeNode(trivialSuccess, repos, postInv) shouldBe true
 
                 val trivialWrapResultSuccess = classDecl.extractMethodNode(postInv, "trivialWrapResultSuccess", repos)
                 executeNode(trivialWrapResultSuccess, repos, postInv) shouldBe true

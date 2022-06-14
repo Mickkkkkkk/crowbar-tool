@@ -18,7 +18,6 @@ import org.abs_models.frontend.ast.ThrowStmt
 import org.abs_models.frontend.ast.WhileStmt
 import org.abs_models.frontend.typechecker.Type
 import org.abs_models.frontend.typechecker.UnknownType
-import java.beans.Expression
 
 /**
  *   Translates the ABS AST into our IR
@@ -273,7 +272,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 val exprs = input.params.map { translateExpression(it, returnType, subst, fullExpr) }
                 val stmts = exprs.map{it.second}.flatten()
                 Pair(SExpr(
-                    input.decl.qualifiedName.replace(".", "-"),
+                    FunctionRepos.functionNameSMT(input.decl as FunctionDecl),
                     exprs.map { it.first}), stmts)
             } else if (input.decl.qualifiedName == "ABS.StdLib.random") {
                 Pair(FreshGenerator.getFreshProgVar(input.model.intType), listOf<org.abs_models.crowbar.data.Stmt>())

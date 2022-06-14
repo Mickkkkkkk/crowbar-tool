@@ -74,6 +74,22 @@ class MaybeClass(Maybe<Int> f, Type f1, Int fi) {
         this.f = Just(0);
     }
 
+    [Ensures(Nothing == result)]
+    Maybe<Bool> returnNothingSimpleSuccess(){
+        return Nothing;
+    }
+
+    [Ensures(Just(Nothing) == Just(result))]
+    Maybe<Bool> returnNothingWrapPostSimpleSuccess(){
+        return Nothing;
+    }
+
+
+    [Ensures(Just(Just(Nothing)) == Just(Just(result)))]
+    Maybe<Maybe<Bool>> returnNothingWrapWrapPostSimpleSuccess(){
+        return Nothing;
+    }
+
 }
 
 class PairClass(Pair<Type, Bool> f, Type f1, Type f2) {
@@ -190,6 +206,10 @@ class ListClass(List<Type> list, Type ft){
     }
 
 
+    [Ensures(result== Nil)]
+    List<Int> returnNilSuccess(){
+        return Nil;
+    }
 
 }
 

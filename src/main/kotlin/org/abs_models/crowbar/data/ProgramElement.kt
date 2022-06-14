@@ -314,7 +314,7 @@ open class Field(val name : String, val concrType :Type = UnknownType.INSTANCE) 
 
     override var absExp: org.abs_models.frontend.ast.Exp? = null
     override fun prettyPrint(): String {
-        return "this.$name : ${concrType.qualifiedName}"
+        return "this.$name : ${concrType}"
     }
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -336,7 +336,7 @@ open class Field(val name : String, val concrType :Type = UnknownType.INSTANCE) 
 open class ProgVar(open val name: String, open val concrType: Type = UnknownType.INSTANCE) : Location, Term {
     override var absExp: org.abs_models.frontend.ast.Exp? = null
     override fun prettyPrint(): String {
-        return "$name:${concrType.qualifiedName}"
+        return "$name:${concrType}"
     }
 
     //this ignores the type

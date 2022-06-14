@@ -521,7 +521,11 @@ class PITReturn(val repos: Repository) : Rule(Modality(
         val targetPost = cond.map[FormulaAbstractVar("POST")] as Formula
         val retExpr = cond.map[ExprAbstractVar("RET")] as Expr
         val ret = exprToTerm(retExpr)
-        val typeReturn = getReturnType(ret)
+        val retTypeFromPost = retrieveReturnTypeFromPost(targetPost)
+        var typeReturn = getReturnType(ret)
+        if(isGeneric(typeReturn) && !isBoundGeneric(typeReturn))
+            typeReturn = retTypeFromPost ?: throw Exception("Unbound return type for retExpr: $retExpr")
+
         val res = LogicNode(
             input.condition,
             And(
@@ -786,6 +790,10 @@ fun getReturnType(term: Term) : Type {
         return term.concrType!!
     }
     else if (term is Function) {
+        if(term.name == "head")
+            return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0)
+        if(term.name == "tail")
+            return (getReturnType(term.params[0]) as DataTypeType)
         if (term.name in arithFunction ){
             val left = getReturnType(term.params[0])
             val right = getReturnType(term.params[1])
@@ -842,4 +850,9 @@ fun innerDivByZeroFormula(expr: Expr) : Formula =
 fun buildMatchForScope(thrown : Expr, active : List<ConcreteExceptionScope>, cont : Stmt) : Stmt {
     val first = active[0]
     return appendStmt(appendStmt(BranchStmt(thrown, first.scopes), first.finally), cont)
+}
+
+fun retrieveReturnTypeFromPost(post: Formula) : Type?{
+    val resultSet = post.iterate { it is ProgVar && it.name == "result" }
+    return  if(resultSet.isEmpty()) null else (resultSet.toList().first() as ProgVar).concrType
 }
