@@ -24,6 +24,22 @@ def Type patternMatchingDoubleWrappedTypeFunc(Type i) = case i {Type1(Type1(_)) 
 
 def DType patternMatchingFuncMatchFun(DType i) = case dt(i) {DType1(_,res) => res;};
 
+[Spec: Requires(x == Nil)]
+[Spec: Ensures(result == 1)]
+def Int listMatchFuncSimpleSuccess(List<Int> x) = case x { Nil => 1 };
+
+[Spec: Requires(x == Nothing)]
+[Spec: Ensures(result == 1)]
+def Int maybeMatchFuncSimpleSuccess(Maybe<Int> x) = case x { Nothing => 1 };
+
+[Spec: Requires(x == Cons(1,Nil))]
+[Spec: Ensures(result == 1)]
+def Int oneElemListMatchFuncSimpleSuccess(List<Int> x) = case x { Cons(1,Nil) => 1 };
+
+[Spec: Requires(x == Just(Nothing))]
+[Spec: Ensures(result == 1)]
+def Int wrappedMaybeMatchFuncSimpleSuccess(Maybe<Maybe<Int>> x) = case x { Just(Nothing) => 1 };
+
 [Spec: Ensures(result == !d)]
 def Bool caseBoolSimpleSuccessMethod(Bool d) =
     case d {

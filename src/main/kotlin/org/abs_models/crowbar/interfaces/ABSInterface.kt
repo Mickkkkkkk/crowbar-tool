@@ -299,7 +299,6 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 val newVar = FreshGenerator.getFreshProgVar(leftType)
                 val matchExpr = translateExpression(input.expr, returnType, subst, fullExpr)
 
-//                val last = input.branchList.getChild(input.branchList.numChild - 1)
 
                 val branchExprs = input.branchList.map {
                     Pair(
@@ -378,8 +377,9 @@ fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, su
             val qualName = if(returnType == pattern.moduleDecl.model.exceptionType) "ABS.StdLib.Exceptions.${pattern.constructor}"
             else if(pattern.constructor == "True" || pattern.constructor == "False")
                 pattern.constructor.toLowerCase()
-            else if(pattern.type.qualifiedName.startsWith("ABS.StdLib."))
-                pattern.type.qualifiedName
+            else if(pattern.type.qualifiedName.startsWith("ABS.StdLib.")) {
+                "ABS.StdLib.${pattern.constructor}"
+            }
             else typeWithModule(pattern.constructor, pattern.moduleDecl.name)
             DataTypeExpr(qualName,pattern.type.qualifiedName,pattern.type,pattern.params.map { translatePattern(it,it.inhType, returnType, subst) })
         }

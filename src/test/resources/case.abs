@@ -175,6 +175,28 @@ class C{
         }
         return res;
     }
+
+    [Spec: Requires(x == Nothing)]
+    [Spec: Ensures(result == 1)]
+    Int maybeMatchSimpleSuccess(Maybe<Int> x) {
+        Int v = 0;
+        switch(x) {
+            Nothing => v = 1;
+            _ => v = 0;
+        }
+        return v;
+    }
+
+    [Spec: Requires(x == Nil)]
+    [Spec: Ensures(result == 1)]
+    Int listMatchSimpleSuccess(List<Int> x) {
+        Int v = 0;
+        switch(x) {
+            Nil => v = 1;
+            _ => v = 0;
+        }
+        return v;
+    }
 }
 
 {}
