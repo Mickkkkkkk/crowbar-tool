@@ -223,22 +223,9 @@ object FunctionRepos{
 					it.type
 				}
 
-			    val zParams = params.joinToString(" ") {
-					if(isConcreteGeneric(it.type)) {
-						ADTRepos.addGeneric(it.type as DataTypeType)
-						genericTypeSMTName(it.type)
-					}
-			    	else
-					ADTRepos.libPrefix(it.type.qualifiedName)
-				}
+			    val zParams = params.joinToString(" ") { translateType(it.type) }
 
-			    val nextsig =  "\n(declare-fun $name ($zParams) ${
-					if(isConcreteGeneric(pair.value.type)) {
-						ADTRepos.addGeneric(pair.value.type as DataTypeType)
-						genericTypeSMTName(pair.value.type)
-					}
-					else
-						ADTRepos.libPrefix(pair.value.type.qualifiedName)})" //todo: use interface to get SMT declaration
+			    val nextsig =  "\n(declare-fun $name ($zParams) ${translateType(pair.value.type)})" //todo: use interface to get SMT declaration
 			    sigs += nextsig
 
 			    val callParams = params.joinToString(" ") { it.name }
@@ -247,12 +234,7 @@ object FunctionRepos{
 			    val funpost = extractSpec(pair.value, "Ensures", pair.value.type)
 
 				val paramsTyped = params.joinToString(" ") { "(${it.name} ${
-					if(isConcreteGeneric(it.type)) {
-						ADTRepos.addGeneric(it.type as DataTypeType)
-						genericTypeSMTName(it.type)
-					}
-					else
-					ADTRepos.libPrefix(it.type.qualifiedName)
+					translateType(it.type)
 				})" }
 				if(params.count() > 0) {
 					val transpost = funpost.toSMT().replace("result","($name $callParams)")
@@ -280,23 +262,7 @@ object FunctionRepos{
 				    val params = pair.value.params
 					val def =  pair.value.functionDef.getChild(0) as PureExp
 					sigs += "\t(${functionNameSMT(pair.value)} (${params.fold("") { acc, nx ->
-						"$acc (${nx.name} ${
-
-							if (isConcreteGeneric(nx.type)) {
-								ADTRepos.addGeneric(nx.type as DataTypeType)
-								genericTypeSMTName(nx.type)
-							} else
-								ADTRepos.libPrefix(nx.type.qualifiedName)
-						})"
-					}
-					})  ${
-
-						if(isConcreteGeneric(def.type)) {
-							ADTRepos.addGeneric(def.type as DataTypeType)
-							genericTypeSMTName(def.type)
-						}
-						else
-							ADTRepos.libPrefix(def.type.qualifiedName)})\n"
+						"$acc (${nx.name} ${translateType(nx.type)})" }})  ${translateType(def.type)})\n"
 					defs += "\t${exprToTerm(translateExpression(def, def.type, emptyMap(),true).first).toSMT()}\n"
 			    }
 				ret += "\n(define-funs-rec(\n$sigs)(\n$defs))"

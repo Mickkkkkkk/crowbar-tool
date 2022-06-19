@@ -48,7 +48,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     ((pre.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) } + post.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) }) as Set<DataTypeConst>).map {
         ADTRepos.addGeneric(it.concrType!! as DataTypeType) }
 
-    val vars =  ((pre.iterate { it is ProgVar } + post.iterate { it is ProgVar }) as Set<ProgVar>).filter {it.name != "heap" && it.name !in specialHeapKeywords && it !is WildCardVar}
+    val vars =  ((pre.iterate { it is ProgVar } + post.iterate { it is ProgVar }) as Set<ProgVar>).filter {it.name != "heap" && it.name !in specialHeapKeywords}
     val heaps =  ((pre.iterate { it is Function } + post.iterate{ it is Function }) as Set<Function>).filter { it.name.startsWith("NEW") }
     val funcs =  ((pre.iterate { it is Function } + post.iterate { it is Function }) as Set<Function>).filter { it.name.startsWith("f_") }
     val preSMT = pre.toSMT()
@@ -62,17 +62,10 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
                 "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
             else ""}
     val varsDecl = vars.joinToString("\n\t"){"(declare-const ${it.name} ${
-        if(it.concrType.isUnknownType)
-            throw Exception("Var with unknown type: ${it.name}")
-        else if (isConcreteGeneric(it.concrType) && !it.concrType.isFutureType) {
-            ADTRepos.addGeneric(it.concrType as DataTypeType)
-            genericTypeSMTName(it.concrType)
-        }
-        else
-            libPrefix(it.concrType.qualifiedName)})\n" +
-            if(it.concrType.isInterfaceType)
-                "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
-            else ""
+        translateType(it.concrType)})\n" +
+        if(it.concrType.isInterfaceType)
+            "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
+        else ""
     }
     val objectImpl = heaps.joinToString("\n"){
         x:Function ->
@@ -222,4 +215,15 @@ fun refreshWildCard(name: String, dType: String,dTypeConcr: Type) {
 fun resetWildCards() {
     wildCardsConst.clear()
     countWildCard = 0
+}
+
+fun translateType(type:Type) : String{
+    return if(type.isUnknownType)
+        throw Exception("Unknown Type Cannot be Translated")
+    else if (isConcreteGeneric(type) && !type.isFutureType) {
+        ADTRepos.addGeneric(type as DataTypeType)
+        genericTypeSMTName(type)
+    }
+    else
+        libPrefix(type.qualifiedName)
 }
