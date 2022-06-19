@@ -107,7 +107,7 @@ fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set
     var countParameter = 0
     return branchTerm.params.foldRight(
         if(branchTerm.concrType!!.isBoolType)
-                Eq(match, branchTerm)
+            Eq(match, branchTerm)
         else
             Is(branchTerm.name, match)
 
@@ -139,13 +139,14 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                 wildCardName = createWildCard(expectedType,expectedTypeConcr)
             else
                 refreshWildCard(wildCardName, expectedType,expectedTypeConcr)
-                
-            val firstMatchTerm = Function(wildCardName)
 
+            val firstMatchTerm = Function(wildCardName)
+            var placeHolderVars: List<ProgVar>
             val branchTerm = branches.foldRight(firstMatchTerm as Term) { branchTerm: BranchTerm, acc: Term ->
                 if(branchTerm.matchTerm is DataTypeConst && isGeneric(branchTerm.matchTerm.concrType)){
                     val matchSMT =  Predicate("=", listOf( match, branchTerm.matchTerm))
                     val branch = branchTerm.branch
+                    placeHolderVars = branchTerm.iterate {it is ProgVar && it.name!in freeVars}.toList() as List<ProgVar>
                     Ite(matchSMT, branch, acc)
                 }else
                 {
@@ -171,7 +172,6 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                 }
             }
             return branchTerm.toSMT()
-
         }else
             throw Exception("No branches")
     }
@@ -253,11 +253,7 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
         }
 
         val list = listOf(boundParam0, boundParam1).fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
-        val ret = getSMT(name, list)
-        return if(wildCardVars.isEmpty())
-            ret
-        else
-            "(exists (${wildCardVars.joinToString(" ") { "(${it.name} ${genericTypeSMTName(it.concrType)})" }}) $ret)"
+        return getSMT(name, list)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -266,6 +262,19 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
                 other.params == params
     }
 
+}
+
+class Exists(elems:List<ProgVar>, formula:Formula): Quantifier("exists", elems,formula){
+}
+
+class Forall(elems:List<ProgVar>, formula:Formula): Quantifier("forall", elems,formula){
+}
+
+open class Quantifier(val name:String, val elems:List<ProgVar>, val formula:Formula) : Formula{
+    override fun toSMT(indent: String): String {
+        return  if(elems.isEmpty()) formula.toSMT()
+        else "($name (${elems.joinToString(" ") { "(${it.name} ${translateType(it.concrType)})" }}) ${formula.toSMT()})"
+    }
 }
 
 data class UpdateOnFormula(val update : UpdateElement, val target : Formula) : Formula {

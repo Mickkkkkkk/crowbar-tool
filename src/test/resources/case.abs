@@ -197,6 +197,28 @@ class C{
         }
         return v;
     }
+
+    [Spec: Requires(l == Cons(1,Nil))]
+    [Spec: Ensures(result == 0)]
+    Int listPlaceholderSimpleSuccess(List<Int> l){
+        Int v = 0;
+        switch (l) {
+            Cons(head,tail) => v = head;
+            _ => v = 0;
+        }
+        return v;
+    }
+
+    [Spec: Requires(l == Just(1))]
+    [Spec: Ensures(result == 0)]
+    Int maybePlaceholderSimpleSuccess(Maybe<Int> l){
+        Int v = 0;
+        switch (l) {
+            Just(x) => v = x;
+            _ => v = 0;
+        }
+        return v;
+    }
 }
 
 {}

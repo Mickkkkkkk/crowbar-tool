@@ -39,8 +39,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
     resetWildCards()
     val pre = deupdatify(ante)
-
-    val post = deupdatify(Not(succ))
+    val post = deupdatify(succ)
     val fields =  (pre.iterate { it is Field } + post.iterate { it is Field }) as Set<Field>
 
     setUsedHeaps(fields.map{libPrefix(it.concrType.qualifiedName)}.toSet())
@@ -48,11 +47,14 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     ((pre.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) } + post.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) }) as Set<DataTypeConst>).map {
         ADTRepos.addGeneric(it.concrType!! as DataTypeType) }
 
-    val vars =  ((pre.iterate { it is ProgVar } + post.iterate { it is ProgVar }) as Set<ProgVar>).filter {it.name != "heap" && it.name !in specialHeapKeywords}
+    val vars =  ((pre.iterate { it is ProgVar } + post.iterate { it is ProgVar  }) as Set<ProgVar>).filter {it.name != "heap" && it.name !in specialHeapKeywords}
     val heaps =  ((pre.iterate { it is Function } + post.iterate{ it is Function }) as Set<Function>).filter { it.name.startsWith("NEW") }
     val funcs =  ((pre.iterate { it is Function } + post.iterate { it is Function }) as Set<Function>).filter { it.name.startsWith("f_") }
-    val preSMT = pre.toSMT()
-    val postSMT = post.toSMT()
+
+    val preWildCards = pre.iterate { it is WildCardVar }.toList()  as List<WildCardVar>
+    val postWildCards = post.iterate { it is WildCardVar }.toList()  as List<WildCardVar>
+    val preSMT = Forall(preWildCards, pre as Formula).toSMT()
+    val negPostSMT = Not(Exists(postWildCards, post as Formula)).toSMT()
 
     val functionDecl = FunctionRepos.toString()
     val primitiveTypesDecl = ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.joinToString("\n\t") { "(declare-sort ${it.qualifiedName} 0)" }
@@ -148,7 +150,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     ; Precondition
     (assert $preSMT )
     ; Negated postcondition
-    (assert $postSMT) 
+    (assert $negPostSMT) 
     (check-sat)
     $modelCmd
     (exit)

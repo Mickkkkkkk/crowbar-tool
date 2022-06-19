@@ -55,6 +55,23 @@ def Int pairPartialMatchSimpleSuccess(Pair<Int,Int> pair) = case pair {Pair(1,_)
 [Spec: Ensures(result == 1)]
 def Int pairWildcardsNoPreSimpleSuccess(Pair<Int,Int> pair) = case pair {Pair(_,_) => 1;};
 
+[Spec : Requires(x == Pair(1,1))]
+[Spec : Ensures(result == 1)]
+def Int pairPlaceholdersFuncSimpleSuccess(Pair<Int,Int> x) = case x { Pair(left,right) => left; };
+
+[Spec : Requires(x == Pair(1,1))]
+[Spec : Ensures(result == 1)]
+def Int pairPlaceholderFuncWildcardSimpleSuccess(Pair<Int,Int> x) = case x { Pair(left,_) => left; };
+
+
+[Spec : Requires(x == Just(1))]
+[Spec : Ensures(result == 1)]
+def Int maybePlaceholdersFuncSimpleSuccess(Maybe<Int> x) = case x { Just(y) => y; };
+
+[Spec : Requires(x == Cons(1, Nil))]
+[Spec : Ensures(result == 1)]
+def Int listPlaceholdersFuncSimpleSuccess(List<Int> x) = case x { Cons(y, Nil) => y; };
+
 class E(ComplexOption fieldA){
 
     [Spec : Requires( i == 1 )]

@@ -110,6 +110,16 @@ class CaseExprTest : CrowbarTest() {
                 val wrappedMaybeMatchFuncSimpleSuccess = model.extractFunctionDecl("CaseExpr", "wrappedMaybeMatchFuncSimpleSuccess").exctractFunctionNode(postInv)
                 executeNode(wrappedMaybeMatchFuncSimpleSuccess, repos, postInv) shouldBe true
 
+                val pairPlaceholdersFuncSimpleSuccess = model.extractFunctionDecl("CaseExpr", "pairPlaceholdersFuncSimpleSuccess").exctractFunctionNode(postInv)
+                executeNode(pairPlaceholdersFuncSimpleSuccess, repos, postInv) shouldBe true
+                val pairPlaceholderFuncWildcardSimpleSuccess = model.extractFunctionDecl("CaseExpr", "pairPlaceholderFuncWildcardSimpleSuccess").exctractFunctionNode(postInv)
+                executeNode(pairPlaceholderFuncWildcardSimpleSuccess, repos, postInv) shouldBe true
+
+                val maybePlaceholdersFuncSimpleSuccess = model.extractFunctionDecl("CaseExpr", "maybePlaceholdersFuncSimpleSuccess").exctractFunctionNode(postInv)
+                executeNode(maybePlaceholdersFuncSimpleSuccess, repos, postInv) shouldBe true
+
+                val listPlaceholdersFuncSimpleSuccess = model.extractFunctionDecl("CaseExpr", "listPlaceholdersFuncSimpleSuccess").exctractFunctionNode(postInv)
+                executeNode(listPlaceholdersFuncSimpleSuccess, repos, postInv) shouldBe true
             }
         }
         "z3 wildcards-no-precondition"{

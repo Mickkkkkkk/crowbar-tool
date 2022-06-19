@@ -112,9 +112,12 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
         }
         is CaseStmt -> {
             var list : List<Branch> = emptyList()
+
             for (br in input.branchList) {
-                val patt = translatePattern(br.left, input.expr.type, returnType, subst)
-                val next = translateStatement(br.right, subst)
+                val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.getFreshWildCard(it.`var`.type)) }
+                val newSubst = subst.toMutableMap().plus(wildCards)
+                val patt = translatePattern(br.left, input.expr.type, returnType, newSubst)
+                val next = translateStatement(br.right, newSubst)
                 list = list + Branch(patt, next)
             }
             val expr = translateExpression(input.expr, returnType, subst, false)
@@ -318,10 +321,13 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             }else {
                 Pair(CaseExpr(translateExpression(input.expr, returnType, subst,true).first,
                     ADTRepos.libPrefix(input.type.qualifiedName),
-                    input.branchList.map {
+                    input.branchList.map {br ->
+                        val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.getFreshWildCard(it.`var`.type)) }
+                        val newSubst = subst.toMutableMap().plus(wildCards)
+                        println(newSubst)
                         BranchExpr(
-                            translatePattern(it.left, it.patternExpType, returnType, subst),
-                            translateExpression(it.right, returnType, subst,true).first)}, input.freeVars,input.type),
+                            translatePattern(br.left, br.patternExpType, returnType, newSubst),
+                            translateExpression(br.right, returnType, newSubst,true).first)}, input.freeVars, input.type),
                     listOf()
                 )
             }
@@ -369,8 +375,8 @@ fun translateGuard(input: Guard, returnType: Type, subst: Map<String, Expr>) : E
 
 fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, subst: Map<String, Expr>) : Expr =
     when (pattern) {
-        is PatternVarUse -> ProgVar(pattern.name, pattern.type)
-        is PatternVar -> ProgVar(pattern.`var`.name, pattern.type)
+        is PatternVarUse -> if (pattern.name in subst) subst[pattern.name]!! else ProgVar(pattern.name, pattern.type)
+        is PatternVar -> if (pattern.`var`.name in subst) subst[pattern.`var`.name]!! else ProgVar(pattern.`var`.name, pattern.type)
         is LiteralPattern -> translateExpression(pattern.literal, returnType, subst,true).first
         is UnderscorePattern ->  FreshGenerator.getFreshWildCard(overrideType)
         is ConstructorPattern -> {
@@ -384,7 +390,7 @@ fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, su
             DataTypeExpr(qualName,pattern.type.qualifiedName,pattern.type,pattern.params.map { translatePattern(it,it.inhType, returnType, subst) })
         }
         else -> throw Exception("Translation of complex constructors is not supported")
-        }
+    }
 
 fun typeWithModule(type : String, moduleName : String) :String {
     var constructor = type

@@ -86,6 +86,14 @@ class CaseTest : CrowbarTest() {
 				val listMatchSimpleSuccess =
 					classDecl.extractMethodNode(postInv, "listMatchSimpleSuccess", repos)
 				executeNode(listMatchSimpleSuccess, repos, postInv) shouldBe true
+
+				val listPlaceholderSimpleSuccess =
+					classDecl.extractMethodNode(postInv, "listPlaceholderSimpleSuccess", repos)
+				executeNode(listPlaceholderSimpleSuccess, repos, postInv) shouldBe true
+
+				val maybePlaceholderSimpleSuccess =
+					classDecl.extractMethodNode(postInv, "maybePlaceholderSimpleSuccess", repos)
+				executeNode(maybePlaceholderSimpleSuccess, repos, postInv) shouldBe true
 			}
 		}
 	}
