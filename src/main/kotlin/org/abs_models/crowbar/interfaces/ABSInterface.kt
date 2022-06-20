@@ -114,7 +114,7 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
             var list : List<Branch> = emptyList()
 
             for (br in input.branchList) {
-                val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.getFreshWildCard(it.`var`.type)) }
+                val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(it.`var`.type)) }
                 val newSubst = subst.toMutableMap().plus(wildCards)
                 val patt = translatePattern(br.left, input.expr.type, returnType, newSubst)
                 val next = translateStatement(br.right, newSubst)
@@ -298,33 +298,36 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
         }
         is CaseExp ->{
             if(!fullExpr) {
-                val leftType = input.branchList.getChild(0).left.type
-                val newVar = FreshGenerator.getFreshProgVar(leftType)
+                val newVar = FreshGenerator.getFreshProgVar(returnType)
                 val matchExpr = translateExpression(input.expr, returnType, subst, fullExpr)
 
 
-                val branchExprs = input.branchList.map {
+                val branchExprs = input.branchList.map {br ->
+
+                    val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(it.`var`.type)) }
+                    val newSubst = subst.toMutableMap().plus(wildCards)
                     Pair(
-                        translatePattern(it.left, it.patternExpType, returnType, subst),
-                        translateExpression(it.right, returnType, subst, fullExpr)
+                        translatePattern(br.left, br.patternExpType, returnType, newSubst),
+                        translateExpression(br.right, returnType, newSubst, fullExpr)
                     )
                 }
+
                 val stmts = matchExpr.second + branchExprs.map { it.second.second }
                     .flatten() + org.abs_models.crowbar.data.AssignStmt(newVar, Const("0", input.model.intType))
 
                 val list: MutableList<Branch> = branchExprs.map {
                     Branch(it.first, org.abs_models.crowbar.data.AssignStmt(newVar, it.second.first))
                 }.toMutableList()
-
+                if(list.last().matchTerm !is ConstructorPattern)
+                    list.add(Branch(FreshGenerator.getFreshWildCard(input.expr.type),org.abs_models.crowbar.data.AssignStmt(newVar, FreshGenerator.getFreshProgVar(returnType))))
 
                 Pair(newVar, stmts + BranchStmt(matchExpr.first, BranchList(list)))
             }else {
                 Pair(CaseExpr(translateExpression(input.expr, returnType, subst,true).first,
                     ADTRepos.libPrefix(input.type.qualifiedName),
                     input.branchList.map {br ->
-                        val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.getFreshWildCard(it.`var`.type)) }
+                        val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(it.`var`.type)) }
                         val newSubst = subst.toMutableMap().plus(wildCards)
-                        println(newSubst)
                         BranchExpr(
                             translatePattern(br.left, br.patternExpType, returnType, newSubst),
                             translateExpression(br.right, returnType, newSubst,true).first)}, input.freeVars, input.type),

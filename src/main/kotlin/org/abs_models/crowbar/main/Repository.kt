@@ -258,13 +258,19 @@ object FunctionRepos{
 		    if(direct.isNotEmpty()) {
 			    var sigs = ""
 			    var defs = ""
+				val placeholders = mutableListOf<ProgVar>().toMutableList()
 			    for (pair in direct) {
 				    val params = pair.value.params
 					val def =  pair.value.functionDef.getChild(0) as PureExp
 					sigs += "\t(${functionNameSMT(pair.value)} (${params.fold("") { acc, nx ->
 						"$acc (${nx.name} ${translateType(nx.type)})" }})  ${translateType(def.type)})\n"
-					defs += "\t${exprToTerm(translateExpression(def, def.type, emptyMap(),true).first).toSMT()}\n"
+					val term =exprToTerm(translateExpression(def, def.type, emptyMap(),true).first)
+					val iterate = term.iterate { it is WildCardVar || it is Placeholder }.toList()
+					if(iterate.isNotEmpty())
+						placeholders += iterate as MutableList<ProgVar>
+					defs += "\t${term.toSMT()}\n"
 			    }
+				ret += placeholders.joinToString("\n") { "(declare-const ${it.name} ${translateType(it.concrType)})" }
 				ret += "\n(define-funs-rec(\n$sigs)(\n$defs))"
 		    }
 	    return ret

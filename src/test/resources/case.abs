@@ -199,11 +199,33 @@ class C{
     }
 
     [Spec: Requires(l == Cons(1,Nil))]
-    [Spec: Ensures(result == 0)]
+    [Spec: Ensures(result == 1)]
     Int listPlaceholderSimpleSuccess(List<Int> l){
         Int v = 0;
         switch (l) {
-            Cons(head,tail) => v = head;
+            Cons(head1,tail1) => v = head1;
+            _ => v = 0;
+        }
+        return v;
+    }
+
+    [Spec: Requires(l == Cons(1,Nil))]
+    [Spec: Ensures(result == 0)]
+    Int listPlaceholderSimpleFail(List<Int> l){
+        Int v = 0;
+        switch (l) {
+            Cons(head1,tail1) => v = head1;
+            _ => v = 0;
+        }
+        return v;
+    }
+
+    [Spec: Requires(l == Just(1))]
+    [Spec: Ensures(result == 1)]
+    Int maybePlaceholderSimpleSuccess(Maybe<Int> l){
+        Int v = 0;
+        switch (l) {
+            Just(x) => v = x;
             _ => v = 0;
         }
         return v;
@@ -211,11 +233,22 @@ class C{
 
     [Spec: Requires(l == Just(1))]
     [Spec: Ensures(result == 0)]
-    Int maybePlaceholderSimpleSuccess(Maybe<Int> l){
+    Int maybePlaceholderSimpleFail(Maybe<Int> l){
         Int v = 0;
         switch (l) {
             Just(x) => v = x;
             _ => v = 0;
+        }
+        return v;
+    }
+
+    [Spec : Requires(x == Cons(1, Nil))]
+    [Spec : Ensures(result == 1)]
+    Int listPlaceholdersSameNameMoreTypesSuccess(List<Int> x) {
+        Int v = 0;
+        switch (x) {
+            Cons(head1, Cons(1,Nil)) => v= 2;
+            Cons(_, head1)  => v=1;
         }
         return v;
     }

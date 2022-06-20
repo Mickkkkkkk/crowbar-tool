@@ -9,6 +9,7 @@ import org.abs_models.frontend.typechecker.UnionType
 //do not use variables starting with pv_ etc.
 object FreshGenerator {
     private var count = 0
+    fun createPlaceholder(dType : Type) : ProgVar = Placeholder("ph_" + (count++), dType)
     fun getFreshWildCard(dType : Type) : WildCardVar = WildCardVar("wc_" + (count++), dType)
     fun getFreshProgVar(dType : Type) : ProgVar = ProgVar("pv_" + (count++), dType)
     fun getFreshPP() : PP = PPId(count++)

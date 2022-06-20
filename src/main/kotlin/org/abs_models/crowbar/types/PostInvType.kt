@@ -11,6 +11,7 @@ import org.abs_models.crowbar.data.SkipStmt
 import org.abs_models.crowbar.data.Stmt
 import org.abs_models.crowbar.data.ThrowStmt
 import org.abs_models.crowbar.data.WhileStmt
+import org.abs_models.crowbar.interfaces.appendDesugaredCaseExprs
 import org.abs_models.crowbar.interfaces.translateExpression
 import org.abs_models.crowbar.interfaces.translateStatement
 import org.abs_models.crowbar.main.*
@@ -161,7 +162,10 @@ interface PostInvType : DeductType{
             if(fDef is BuiltinFunctionDef){
                 throw Exception("error during translation, cannot handle builtin yet")
             }else if(fDef is ExpFunctionDef){
-                body = ReturnStmt(translateExpression(fDef.rhs, fDecl.type, emptyMap(),true).first)
+
+                val expr = translateExpression(fDef.rhs, fDecl.type, emptyMap(),false)
+                body = appendDesugaredCaseExprs(expr.second, ReturnStmt(expr.first))
+
             }
         }catch (e: Exception) {
             e.printStackTrace()

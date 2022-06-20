@@ -93,7 +93,7 @@ class CaseExprTest : CrowbarTest() {
 
 
             "$smt generics"{
-                smtPath = smt
+                smtPath = z3
                 val (model, repos) = load(listOf(Paths.get("src/test/resources/caseExpr.abs")))
 				val pairPartialMatchSimpleSuccess = model.extractFunctionDecl("CaseExpr", "pairPartialMatchSimpleSuccess").exctractFunctionNode(postInv)
 				executeNode(pairPartialMatchSimpleSuccess, repos, postInv) shouldBe true

@@ -98,9 +98,6 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
         return "($back $list)"
     }
 
-    fun getWildcardVars(): List<WildCardVar>{
-        return params.map { if(it is WildCardVar) setOf(it) else if(it is DataTypeConst) it.getWildcardVars() else setOf() }.flatten()
-    }
 }
 
 fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set<String>): Formula {
@@ -141,12 +138,10 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                 refreshWildCard(wildCardName, expectedType,expectedTypeConcr)
 
             val firstMatchTerm = Function(wildCardName)
-            var placeHolderVars: List<ProgVar>
             val branchTerm = branches.foldRight(firstMatchTerm as Term) { branchTerm: BranchTerm, acc: Term ->
                 if(branchTerm.matchTerm is DataTypeConst && isGeneric(branchTerm.matchTerm.concrType)){
                     val matchSMT =  Predicate("=", listOf( match, branchTerm.matchTerm))
                     val branch = branchTerm.branch
-                    placeHolderVars = branchTerm.iterate {it is ProgVar && it.name!in freeVars}.toList() as List<ProgVar>
                     Ite(matchSMT, branch, acc)
                 }else
                 {
@@ -243,15 +238,6 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
         val boundTerms = boundTerms(params[0],params[1])
         val boundParam0 = boundTerms.first
         val boundParam1 = boundTerms.second
-        val wildCardVars= mutableListOf<WildCardVar>()
-
-        if(boundParam0 is DataTypeConst){
-            wildCardVars.addAll(boundParam0.getWildcardVars())
-        }
-        if(boundParam1 is DataTypeConst){
-            wildCardVars.addAll(boundParam1.getWildcardVars())
-        }
-
         val list = listOf(boundParam0, boundParam1).fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
         return getSMT(name, list)
     }
@@ -265,9 +251,6 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
 }
 
 class Exists(elems:List<ProgVar>, formula:Formula): Quantifier("exists", elems,formula){
-}
-
-class Forall(elems:List<ProgVar>, formula:Formula): Quantifier("forall", elems,formula){
 }
 
 open class Quantifier(val name:String, val elems:List<ProgVar>, val formula:Formula) : Formula{
@@ -324,7 +307,7 @@ object False : Formula {
 
 val specialHeapKeywords = mapOf(OldHeap.name to OldHeap, LastHeap.name to LastHeap)
 val specialKeywordNoHeap = setOf("match")
-val specialKeywords = specialHeapKeywords.keys + setOf("match")
+val specialKeywords = specialHeapKeywords.keys + setOf("match") + setOf("head","tail")//todo: remove head and tail after fix of parametric functions
 
 data class HeapType(val name: String) : Type() {
     override fun copy(): Type {
@@ -437,6 +420,36 @@ fun deupdatify(input: LogicElement) : LogicElement {
         is And -> And(deupdatify(input.left) as Formula, deupdatify(input.right) as Formula)
         is Or -> Or(deupdatify(input.left) as Formula, deupdatify(input.right) as Formula)
         is Not -> Not(deupdatify(input.left) as Formula)
+        else -> input
+    }
+}
+
+fun replaceInLogicElem(input: Formula, oldPredicate: Formula, newFormula: Formula) : Formula {
+    return when(input){
+        is Predicate -> if (input == oldPredicate) newFormula else input
+        is Impl -> Impl(replaceInLogicElem(input.left,oldPredicate, newFormula), replaceInLogicElem(input.right,oldPredicate, newFormula))
+        is And -> And(replaceInLogicElem(input.left,oldPredicate, newFormula), replaceInLogicElem(input.right,oldPredicate, newFormula))
+        is Or -> Or(replaceInLogicElem(input.left,oldPredicate, newFormula), replaceInLogicElem(input.right,oldPredicate, newFormula))
+        is Not -> Not(replaceInLogicElem(input.left,oldPredicate, newFormula))
+        is Exists -> Exists(input.elems, replaceInLogicElem(input.formula,oldPredicate,newFormula))
+        else -> input
+    }
+}
+
+//todo: check if useful
+fun replace(input: LogicElement, oldVar: ProgVar, newVar: ProgVar) : LogicElement{
+    return when(input){
+        is ProgVar -> if(input == oldVar) newVar else input
+        is DataTypeConst -> DataTypeConst(input.name, input.concrType, input.params.map { p -> replace(p, oldVar, newVar) as Term })
+        is Function -> Function(input.name, input.params.map { p -> replace(p, oldVar, newVar) as Term })
+        is Predicate -> Predicate(input.name, input.params.map {
+                p -> replace(p, oldVar,newVar) as Term
+        })
+        is Impl -> Impl(replace(input.left, oldVar,newVar) as Formula, replace(input.right,oldVar,newVar) as Formula)
+        is And -> And(replace(input.left,oldVar,newVar) as Formula, replace(input.right,oldVar,newVar) as Formula)
+        is Or -> Or(replace(input.left,oldVar,newVar) as Formula, replace(input.right,oldVar,newVar) as Formula)
+        is Not -> Not(replace(input.left,oldVar,newVar) as Formula)
+        is Ite -> Ite(replace(input.condition,oldVar,newVar) as Formula, replace(input.term1,oldVar, newVar) as Term,replace(input.term2,oldVar, newVar) as Term)
         else -> input
     }
 }

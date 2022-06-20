@@ -356,6 +356,8 @@ open class ProgVar(open val name: String, open val concrType: Type = UnknownType
     }
     override fun toSMT(indent:String) : String = name
 }
+
+data class Placeholder(override val name:String, override val concrType:Type) :ProgVar(name,concrType)
 data class WildCardVar(override val name:String, override val concrType:Type) :ProgVar(name,concrType)
 data class ReturnVar(val vParam : String, override val concrType: Type) : ProgVar("result", concrType)
 

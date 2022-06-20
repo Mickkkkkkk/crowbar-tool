@@ -38,8 +38,8 @@ val smtHeader = """
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
     resetWildCards()
-    val pre = deupdatify(ante)
-    val post = deupdatify(succ)
+    var  pre = deupdatify(ante)
+    var post = deupdatify(succ)
     val fields =  (pre.iterate { it is Field } + post.iterate { it is Field }) as Set<Field>
 
     setUsedHeaps(fields.map{libPrefix(it.concrType.qualifiedName)}.toSet())
@@ -47,15 +47,39 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     ((pre.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) } + post.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) }) as Set<DataTypeConst>).map {
         ADTRepos.addGeneric(it.concrType!! as DataTypeType) }
 
-    val vars =  ((pre.iterate { it is ProgVar } + post.iterate { it is ProgVar  }) as Set<ProgVar>).filter {it.name != "heap" && it.name !in specialHeapKeywords}
+    val vars =  ((pre.iterate { it is ProgVar } + post.iterate { it is ProgVar  }) as Set<ProgVar>).filter {
+        it.name != "heap" && it.name !in specialHeapKeywords}
     val heaps =  ((pre.iterate { it is Function } + post.iterate{ it is Function }) as Set<Function>).filter { it.name.startsWith("NEW") }
     val funcs =  ((pre.iterate { it is Function } + post.iterate { it is Function }) as Set<Function>).filter { it.name.startsWith("f_") }
 
-    val preWildCards = pre.iterate { it is WildCardVar }.toList()  as List<WildCardVar>
-    val postWildCards = post.iterate { it is WildCardVar }.toList()  as List<WildCardVar>
-    val preSMT = Forall(preWildCards, pre as Formula).toSMT()
-    val negPostSMT = Not(Exists(postWildCards, post as Formula)).toSMT()
+    val prePlaceholders = pre.iterate { it is Placeholder } as Set<Placeholder>
+    val postPlaceholders = post.iterate { it is Placeholder } as Set<Placeholder>
+    val allPhs = prePlaceholders.union(postPlaceholders)
+    val placeholders = prePlaceholders.intersect(postPlaceholders)
+    val globPlaceholders = prePlaceholders.union(postPlaceholders).map {  ProgVar("${it.name}_${it.concrType}", it.concrType)}
+    (pre.iterate { it is Predicate }.toList() as List<Predicate>).map {
+        oldPredicate ->
+        var newFormula= (oldPredicate.iterate { el -> el is Placeholder && el in placeholders } as Set<Placeholder>).fold(oldPredicate) {
+                acc:Formula, ph : Placeholder->
+            And(acc, Predicate("=", listOf(ph, ProgVar("${ph.name}_${ph.concrType}", ph.concrType))))
+        }
+        val wildcards = oldPredicate.iterate { it is WildCardVar || it is Placeholder } as Set<ProgVar>
+         newFormula= Exists(wildcards.toList(), newFormula)
+        pre = replaceInLogicElem(pre as Formula, oldPredicate, newFormula)
+    }
+    post.iterate { it is Predicate }.map {
+            oldPredicate ->
+        if(placeholders.isNotEmpty()) {
+            postPlaceholders.map {
+                val globalPh= ProgVar("${it.name}_${it.concrType}", it.concrType)
+                val newFormula = replace(oldPredicate as Predicate, it, globalPh) as Predicate
+                post = replaceInLogicElem(post as Formula, oldPredicate, newFormula)
+            }
+        }
+    }
 
+    val preSMT =  (pre as Formula).toSMT()
+    val negPostSMT = Not(post as Formula).toSMT()
     val functionDecl = FunctionRepos.toString()
     val primitiveTypesDecl = ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.joinToString("\n\t") { "(declare-sort ${it.qualifiedName} 0)" }
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
@@ -63,8 +87,8 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
             if(it.concrType.isInterfaceType)
                 "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
             else ""}
-    val varsDecl = vars.joinToString("\n\t"){"(declare-const ${it.name} ${
-        translateType(it.concrType)})\n" +
+    val varsDecl = (vars.union(globPlaceholders).union(allPhs)).joinToString("\n\t"){"(declare-const ${it.name} ${
+        translateType(it.concrType)}) ; ${it}\n" +
         if(it.concrType.isInterfaceType)
             "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
         else ""

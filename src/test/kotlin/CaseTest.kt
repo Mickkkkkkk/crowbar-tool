@@ -90,10 +90,21 @@ class CaseTest : CrowbarTest() {
 				val listPlaceholderSimpleSuccess =
 					classDecl.extractMethodNode(postInv, "listPlaceholderSimpleSuccess", repos)
 				executeNode(listPlaceholderSimpleSuccess, repos, postInv) shouldBe true
+				val listPlaceholderSimpleFail =
+					classDecl.extractMethodNode(postInv, "listPlaceholderSimpleFail", repos)
+				executeNode(listPlaceholderSimpleFail, repos, postInv) shouldBe false
 
 				val maybePlaceholderSimpleSuccess =
 					classDecl.extractMethodNode(postInv, "maybePlaceholderSimpleSuccess", repos)
 				executeNode(maybePlaceholderSimpleSuccess, repos, postInv) shouldBe true
+				val maybePlaceholderSimpleFail =
+					classDecl.extractMethodNode(postInv, "maybePlaceholderSimpleFail", repos)
+				executeNode(maybePlaceholderSimpleFail, repos, postInv) shouldBe false
+
+				val listPlaceholdersSameNameMoreTypesSuccess =
+					classDecl.extractMethodNode(postInv, "listPlaceholdersSameNameMoreTypesSuccess", repos)
+				executeNode(listPlaceholdersSameNameMoreTypesSuccess, repos, postInv) shouldBe true
+
 			}
 		}
 	}
