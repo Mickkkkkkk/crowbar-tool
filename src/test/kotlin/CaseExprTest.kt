@@ -122,11 +122,18 @@ class CaseExprTest : CrowbarTest() {
                 executeNode(listPlaceholdersFuncSimpleSuccess, repos, postInv) shouldBe true
 
                 val classDecl = model.extractClassDecl("CaseExpr", "E")
-                val callRecFunctionNoContractSuccess =  classDecl.extractMethodNode(postInv, "callRecFunctionNoContractSuccess", repos)
-                executeNode(callRecFunctionNoContractSuccess, repos, postInv) shouldBe true
 
-                val callFuncNestedGenericsParam =  classDecl.extractMethodNode(postInv, "callFuncNestedGenericsParam", repos)
-                executeNode(callFuncNestedGenericsParam, repos, postInv) shouldBe true
+                val callRecFuncPlaceholdersNoContractSuccess =  classDecl.extractMethodNode(postInv, "callRecFuncPlaceholdersNoContractSuccess", repos)
+                executeNode(callRecFuncPlaceholdersNoContractSuccess, repos, postInv) shouldBe true
+
+                val callFuncNestedGenericsPlaceholdersNoContractSuccess =  classDecl.extractMethodNode(postInv, "callFuncNestedGenericsPlaceholdersNoContractSuccess", repos)
+                executeNode(callFuncNestedGenericsPlaceholdersNoContractSuccess, repos, postInv) shouldBe true
+
+                val callRecFuncPlaceholdersNoContractFail =  classDecl.extractMethodNode(postInv, "callRecFuncPlaceholdersNoContractFail", repos)
+                executeNode(callRecFuncPlaceholdersNoContractFail, repos, postInv) shouldBe false
+
+                val callFuncNestedGenericsPlaceholdersNoContractFail =  classDecl.extractMethodNode(postInv, "callFuncNestedGenericsPlaceholdersNoContractFail", repos)
+                executeNode(callFuncNestedGenericsPlaceholdersNoContractFail, repos, postInv) shouldBe false
 
             }
         }

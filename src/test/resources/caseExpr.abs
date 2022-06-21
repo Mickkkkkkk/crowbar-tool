@@ -197,13 +197,23 @@ class E(ComplexOption fieldA){
     }
 
     [Spec: Ensures(result == 5)]
-    Int callRecFunctionNoContractSuccess(){
+    Int callRecFuncPlaceholdersNoContractSuccess(){
         return recSum(Pair(3,2));
     }
 
 
     [Spec: Ensures(result == 14)]
-    Int callFuncNestedGenericsParam(){
+    Int callFuncNestedGenericsPlaceholdersNoContractSuccess(){
+        return sumFstPairMultSndTrdList(Pair(2,Cons(3,Cons(4,Nil))));
+    }
+
+    [Spec: Ensures(result != 5)]
+    Int callRecFuncPlaceholdersNoContractFail(){
+        return recSum(Pair(3,2));
+    }
+
+    [Spec: Ensures(result != 14)]
+    Int callFuncNestedGenericsPlaceholdersNoContractFail(){
         return sumFstPairMultSndTrdList(Pair(2,Cons(3,Cons(4,Nil))));
     }
 
