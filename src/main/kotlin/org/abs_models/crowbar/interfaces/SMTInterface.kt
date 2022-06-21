@@ -65,15 +65,15 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
         }
         val wildcards = oldPredicate.iterate { it is WildCardVar || it is Placeholder } as Set<ProgVar>
          newFormula= Exists(wildcards.toList(), newFormula)
-        pre = replaceInLogicElem(pre as Formula, oldPredicate, newFormula)
+        pre = replaceInFormula(pre as Formula, oldPredicate, newFormula)
     }
     post.iterate { it is Predicate }.map {
             oldPredicate ->
         if(placeholders.isNotEmpty()) {
             postPlaceholders.map {
                 val globalPh= ProgVar("${it.name}_${it.concrType}", it.concrType)
-                val newFormula = replace(oldPredicate as Predicate, it, globalPh) as Predicate
-                post = replaceInLogicElem(post as Formula, oldPredicate, newFormula)
+                val newFormula = replaceInLogicElement(oldPredicate as Predicate, mapOf(Pair(it, globalPh))) as Predicate
+                post = replaceInFormula(post as Formula, oldPredicate, newFormula)
             }
         }
     }

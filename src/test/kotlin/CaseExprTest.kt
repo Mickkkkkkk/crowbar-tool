@@ -120,6 +120,14 @@ class CaseExprTest : CrowbarTest() {
 
                 val listPlaceholdersFuncSimpleSuccess = model.extractFunctionDecl("CaseExpr", "listPlaceholdersFuncSimpleSuccess").exctractFunctionNode(postInv)
                 executeNode(listPlaceholdersFuncSimpleSuccess, repos, postInv) shouldBe true
+
+                val classDecl = model.extractClassDecl("CaseExpr", "E")
+                val callRecFunctionNoContractSuccess =  classDecl.extractMethodNode(postInv, "callRecFunctionNoContractSuccess", repos)
+                executeNode(callRecFunctionNoContractSuccess, repos, postInv) shouldBe true
+
+                val callFuncNestedGenericsParam =  classDecl.extractMethodNode(postInv, "callFuncNestedGenericsParam", repos)
+                executeNode(callFuncNestedGenericsParam, repos, postInv) shouldBe true
+
             }
         }
         "z3 wildcards-no-precondition"{

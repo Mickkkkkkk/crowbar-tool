@@ -29,6 +29,8 @@ object ADTRepos {
 	val exceptionDecl = mutableListOf<ExceptionDecl>()
 	val interfaceDecl = mutableListOf<InterfaceDecl>()
 
+	val placeholdersMap : MutableMap<Placeholder,Term> = mutableMapOf()
+
 	val objects : MutableMap<String,UnionType> = mutableMapOf()
 
 	private val concreteGenerics :MutableMap<String, DataTypeType> = mutableMapOf()
@@ -193,11 +195,7 @@ object ADTRepos {
 
 object FunctionRepos{
 
-	val functionPair = listOf("fst","snd")
-	val functionTriple = setOf("fstT","sndT","trdT")
-	val functionList = setOf("head","tail")
-	val functionPairTriple = functionTriple.union(functionPair)
-	val builtInFunctionNames = functionPairTriple.union(setOf("abs")).union(functionList)
+	val builtInFunctionNames = setOf("abs")
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
 
@@ -241,7 +239,6 @@ object FunctionRepos{
 					val nextDef = "\n(assert (forall ($paramsTyped) (=> ${funpre.toSMT()} $transpost)))"
 
 					if(isGeneric(pair.value.type) && !isConcreteGeneric(pair.value.type)){
-						println((pair.value.type as DataTypeType).typeArgs)
 						genericFunctions[name] = Triple((pair.value.type as DataTypeType), paramTypes,
 							Function("(=> ${funpre.toSMT()} $transpost)", params.map{Function(it.name)} ))
 					}
@@ -258,19 +255,29 @@ object FunctionRepos{
 		    if(direct.isNotEmpty()) {
 			    var sigs = ""
 			    var defs = ""
-				val placeholders = mutableListOf<ProgVar>().toMutableList()
 			    for (pair in direct) {
 				    val params = pair.value.params
 					val def =  pair.value.functionDef.getChild(0) as PureExp
 					sigs += "\t(${functionNameSMT(pair.value)} (${params.fold("") { acc, nx ->
 						"$acc (${nx.name} ${translateType(nx.type)})" }})  ${translateType(def.type)})\n"
 					val term =exprToTerm(translateExpression(def, def.type, emptyMap(),true).first)
-					val iterate = term.iterate { it is WildCardVar || it is Placeholder }.toList()
-					if(iterate.isNotEmpty())
-						placeholders += iterate as MutableList<ProgVar>
+					if(term is Case) {
+						term.branches.forEach {
+							br -> when(br.matchTerm) {
+								is DataTypeConst -> {
+									val map = br.matchTerm.placeholdersToSMT()
+									map.forEach{
+										ADTRepos.placeholdersMap[it.key] = it.value.fold(term.match){acc,nx ->
+											Function(nx, listOf(acc))
+										}
+									}
+								}
+							}
+						}
+
+					}
 					defs += "\t${term.toSMT()}\n"
 			    }
-				ret += placeholders.joinToString("\n") { "(declare-const ${it.name} ${translateType(it.concrType)})" }
 				ret += "\n(define-funs-rec(\n$sigs)(\n$defs))"
 		    }
 	    return ret

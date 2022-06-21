@@ -98,6 +98,43 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
         return "($back $list)"
     }
 
+    fun placeholdersToSMT(): Map<Placeholder, List<String>> {
+        val params = this.params
+        val mapMatch = mutableMapOf <Placeholder, List<String>>()
+        var count = 0;
+
+        params.forEach {
+            val functionName = "${name}_${count++}"
+
+            when(it) {
+                is Placeholder -> mapMatch[it] = listOf(functionName)
+                is DataTypeConst -> it.placeholdersToSMT().forEach { mapping ->
+                    mapMatch[mapping.key] = listOf(functionName) + mapping.value
+                }
+            }
+        }
+        return mapMatch
+    }
+
+    fun concreteParamsToSMT(): Map<Term, List<String>> {
+        val params = this.params
+        val mapMatch = mutableMapOf <Term, List<String>>()
+        var count = 0;
+
+        params.forEach {
+            val functionName = "${name}_${count++}"
+
+            when(it) {
+                is DataTypeConst -> it.concreteParamsToSMT().forEach { mapping ->
+                    mapMatch[mapping.key] = listOf(functionName) + mapping.value
+                }
+                !is Placeholder -> mapMatch[it] = listOf(functionName)
+
+            }
+        }
+        return mapMatch
+    }
+
 }
 
 fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set<String>): Formula {
@@ -140,9 +177,18 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
             val firstMatchTerm = Function(wildCardName)
             val branchTerm = branches.foldRight(firstMatchTerm as Term) { branchTerm: BranchTerm, acc: Term ->
                 if(branchTerm.matchTerm is DataTypeConst && isGeneric(branchTerm.matchTerm.concrType)){
-                    val matchSMT =  Predicate("=", listOf( match, branchTerm.matchTerm))
-                    val branch = branchTerm.branch
-                    Ite(matchSMT, branch, acc)
+                    val matches = branchTerm.matchTerm.concreteParamsToSMT().map {
+                        Predicate("=", listOf(it.key, it.value.fold(match){
+                            acc: Term, s: String -> Function(s, listOf(acc))
+                        }))
+                    }.fold(True){accFormula: Formula, predicate: Predicate ->  And(accFormula,predicate)}
+
+                    val newMatchSMT = And(Is(genericSMTName(branchTerm.matchTerm.name, branchTerm.matchTerm.concrType!!), match), matches)
+                    var branch = branchTerm.branch
+                    val placeholders = branch.iterate { it is Placeholder }
+                    if(placeholders.isNotEmpty())
+                        branch = replaceInTerm(branch, ADTRepos.placeholdersMap.filter { it.key in placeholders } as Map<ProgVar,Term>)
+                    Ite(newMatchSMT, branch, acc)
                 }else
                 {
                     var indexOfParam = -1
@@ -307,7 +353,7 @@ object False : Formula {
 
 val specialHeapKeywords = mapOf(OldHeap.name to OldHeap, LastHeap.name to LastHeap)
 val specialKeywordNoHeap = setOf("match")
-val specialKeywords = specialHeapKeywords.keys + setOf("match") + setOf("head","tail")//todo: remove head and tail after fix of parametric functions
+val specialKeywords = specialHeapKeywords.keys + setOf("match")
 
 data class HeapType(val name: String) : Type() {
     override fun copy(): Type {
@@ -424,33 +470,45 @@ fun deupdatify(input: LogicElement) : LogicElement {
     }
 }
 
-fun replaceInLogicElem(input: Formula, oldPredicate: Formula, newFormula: Formula) : Formula {
+fun replaceInFormula(input: Formula, oldPredicate: Formula, newFormula: Formula) : Formula {
     return when(input){
         is Predicate -> if (input == oldPredicate) newFormula else input
-        is Impl -> Impl(replaceInLogicElem(input.left,oldPredicate, newFormula), replaceInLogicElem(input.right,oldPredicate, newFormula))
-        is And -> And(replaceInLogicElem(input.left,oldPredicate, newFormula), replaceInLogicElem(input.right,oldPredicate, newFormula))
-        is Or -> Or(replaceInLogicElem(input.left,oldPredicate, newFormula), replaceInLogicElem(input.right,oldPredicate, newFormula))
-        is Not -> Not(replaceInLogicElem(input.left,oldPredicate, newFormula))
-        is Exists -> Exists(input.elems, replaceInLogicElem(input.formula,oldPredicate,newFormula))
+        is Impl -> Impl(replaceInFormula(input.left,oldPredicate, newFormula), replaceInFormula(input.right,oldPredicate, newFormula))
+        is And -> And(replaceInFormula(input.left,oldPredicate, newFormula), replaceInFormula(input.right,oldPredicate, newFormula))
+        is Or -> Or(replaceInFormula(input.left,oldPredicate, newFormula), replaceInFormula(input.right,oldPredicate, newFormula))
+        is Not -> Not(replaceInFormula(input.left,oldPredicate, newFormula))
+        is Exists -> Exists(input.elems, replaceInFormula(input.formula,oldPredicate,newFormula))
         else -> input
     }
 }
 
 //todo: check if useful
-fun replace(input: LogicElement, oldVar: ProgVar, newVar: ProgVar) : LogicElement{
+fun replaceInLogicElement(input: LogicElement, map : Map<ProgVar,Term>) : LogicElement{
     return when(input){
-        is ProgVar -> if(input == oldVar) newVar else input
-        is DataTypeConst -> DataTypeConst(input.name, input.concrType, input.params.map { p -> replace(p, oldVar, newVar) as Term })
-        is Function -> Function(input.name, input.params.map { p -> replace(p, oldVar, newVar) as Term })
+        is ProgVar -> if(input in map) map[input]!! else input
+        is DataTypeConst -> DataTypeConst(input.name, input.concrType, input.params.map { p -> replaceInLogicElement(p, map) as Term })
+        is Function -> Function(input.name, input.params.map { p -> replaceInLogicElement(p, map) as Term })
         is Predicate -> Predicate(input.name, input.params.map {
-                p -> replace(p, oldVar,newVar) as Term
+                p -> replaceInLogicElement(p, map) as Term
         })
-        is Impl -> Impl(replace(input.left, oldVar,newVar) as Formula, replace(input.right,oldVar,newVar) as Formula)
-        is And -> And(replace(input.left,oldVar,newVar) as Formula, replace(input.right,oldVar,newVar) as Formula)
-        is Or -> Or(replace(input.left,oldVar,newVar) as Formula, replace(input.right,oldVar,newVar) as Formula)
-        is Not -> Not(replace(input.left,oldVar,newVar) as Formula)
-        is Ite -> Ite(replace(input.condition,oldVar,newVar) as Formula, replace(input.term1,oldVar, newVar) as Term,replace(input.term2,oldVar, newVar) as Term)
+        is Impl -> Impl(replaceInLogicElement(input.left, map) as Formula, replaceInLogicElement(input.right,map) as Formula)
+        is And -> And(replaceInLogicElement(input.left,map) as Formula, replaceInLogicElement(input.right,map) as Formula)
+        is Or -> Or(replaceInLogicElement(input.left,map) as Formula, replaceInLogicElement(input.right,map) as Formula)
+        is Not -> Not(replaceInLogicElement(input.left,map) as Formula)
+        is Ite -> Ite(replaceInLogicElement(input.condition,map) as Formula, replaceInLogicElement(input.term1,map) as Term,replaceInLogicElement(input.term2,map) as Term)
         else -> input
+    }
+}
+
+fun replaceInTerm(input: Term, map : Map<ProgVar,Term>) : Term{
+    return when(input){
+        is ProgVar -> if(input in map) map[input]!! else input
+        is DataTypeConst -> DataTypeConst(input.name, input.concrType, input.params.map { p -> replaceInLogicElement(p, map) as Term })
+        is Function -> Function(input.name, input.params.map { p -> replaceInTerm(p, map)})
+        is Ite -> Ite(replaceInLogicElement(input.condition,map) as Formula, replaceInTerm(input.term1,map),replaceInTerm(input.term2,map))
+        is Case -> Case(replaceInTerm(input.match,map), input.expectedType,input.branches.map { replaceInTerm(it,map) } as List<BranchTerm>,input.freeVars,input.expectedTypeConcr)
+        is BranchTerm -> BranchTerm(replaceInTerm(input.matchTerm,map),replaceInTerm(input.branch,map))
+        else -> throw Exception("ReplaceInTerm not defined for $input::${input.prettyPrint()}")
     }
 }
 

@@ -72,6 +72,10 @@ def Int maybePlaceholdersFuncSimpleSuccess(Maybe<Int> x) = case x { Just(y) => y
 [Spec : Ensures(result == 1)]
 def Int listPlaceholdersFuncSimpleSuccess(List<Int> x) = case x { Cons(y, Nil) => y; };
 
+def Int recSum(Pair<Int,Int> x) = case x {Pair(0,snd) => snd | Pair(fst1,snd1)=> when(fst1<0) then snd1 else recSum(Pair(fst1-1,snd1+1));};
+
+def Int sumFstPairMultSndTrdList(Pair<Int,List<Int>> x) = case x {Pair(fst,Cons(snd,Cons(trd,_))) => fst+snd*trd;};
+
 class E(ComplexOption fieldA){
 
     [Spec : Requires( i == 1 )]
@@ -192,6 +196,16 @@ class E(ComplexOption fieldA){
         return i;
     }
 
+    [Spec: Ensures(result == 5)]
+    Int callRecFunctionNoContractSuccess(){
+        return recSum(Pair(3,2));
+    }
+
+
+    [Spec: Ensures(result == 14)]
+    Int callFuncNestedGenericsParam(){
+        return sumFstPairMultSndTrdList(Pair(2,Cons(3,Cons(4,Nil))));
+    }
 
 }
 
