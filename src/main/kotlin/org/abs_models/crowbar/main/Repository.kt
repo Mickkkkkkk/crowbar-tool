@@ -196,13 +196,13 @@ object ADTRepos {
 
 object FunctionRepos{
 
-	val builtInFunctionNames = setOf("abs", "head","tail","fst","snd","fstT", "sndT","trdT")
+	val builtInFunctionNames = setOf("abs", "head","tail","fst","snd","fstT", "sndT","trdT", "contains")
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
 	val parametricFunctions = mutableMapOf<String,FunctionDecl>()
 	val concreteParametricNameSMT = mutableMapOf<Pair<String,List<Type>>,String>()
 	val parametricFunctionTypeMap = mutableMapOf<Pair<String,List<Type>>,Map<TypeParameter,Type>>()
-	val contractsFunctions = mutableMapOf<String,Pair<Formula,Formula>>()
+	val concreteFunctionsToSMT = mutableMapOf<Pair<String,List<Type>>,Pair<String,String>>()
 
     fun isKnown(str: String) = known.containsKey(str)
     fun get(str: String) = known.getValue(str)
@@ -245,10 +245,7 @@ object FunctionRepos{
 			    val callParams = params.joinToString(" ") { it.name }
 
 			    val funpre = extractSpec(pair.value, "Requires", pair.value.type)
-			    var funpost = extractSpec(pair.value, "Ensures", pair.value.type)
-
-				val parametricFunctions = funpost.iterate { it is Function  && it.name in parametricFunctions} as Set<Function>
-				println("param:$parametricFunctions")
+			    val funpost = extractSpec(pair.value, "Ensures", pair.value.type)
 
 				val paramsTyped = params.joinToString(" ") { "(${it.name} ${
 					translateType(it.type)
@@ -302,8 +299,10 @@ object FunctionRepos{
 		known.clear()
 		genericFunctions.clear()
 		parametricFunctions.clear()
-		parametricFunctionTypeMap.clear()
 		concreteParametricNameSMT.clear()
+		parametricFunctionTypeMap.clear()
+		concreteFunctionsToSMT.clear()
+
 		ADTRepos.clearConcreteGenerics()
 		for (mDecl in model.moduleDecls){
 			if(mDecl.name.startsWith("ABS") && !mDecl.name.startsWith("ABS.StdLib")) continue
@@ -311,7 +310,7 @@ object FunctionRepos{
 			for (decl in mDecl.decls){
 
 				if(decl is FunctionDecl){
-					if(mDecl.name.startsWith("ABS") && decl.name !in setOf("head","tail","fst","snd","fstT", "sndT","trdT")) continue
+					if(mDecl.name.startsWith("ABS") && decl.name !in builtInFunctionNames.minus("abs")) continue
 					initFunctionDef(decl)
 				}
 			}
@@ -349,12 +348,10 @@ object FunctionRepos{
 	}
 
 	fun concretizeFunctionTosSMT() : String{
-
-		val concreteParametricFunctionsSMTLocals = concreteParametricNameSMT.keys.associate {
-			concretizeFunctionToSMT(it.first, it.second)
-		}
-		val sigsDefs = concreteParametricFunctionsSMTLocals.map { Pair(it.key, it.value) }.toMap()
-		if(sigsDefs.isNotEmpty())
+		val list = concreteParametricNameSMT.keys. map { Pair(it.first, it.second)}
+		list.forEach { concretizeFunctionToSMT(it.first, it.second) }
+		val sigsDefs = concreteFunctionsToSMT.map { it.value }.toMap()
+		if (sigsDefs.isNotEmpty())
 			return "\n(define-funs-rec (\n${sigsDefs.keys.joinToString(" ") { it }})(\n${sigsDefs.values.joinToString(" ") { it }}))"
 		return "; no parametric declarations"
 	}
@@ -363,7 +360,6 @@ object FunctionRepos{
 		if(function.name !in parametricFunctions)
 			throw Exception("Function ${function.name} not defined")
 		else {
-
 			val map = getMapTypes(parametricFunctions[function.name]!!.params.toList(), function.params)
 			val newMap = (parametricFunctions[function.name] as ParametricFunctionDecl).typeParameterList.associate{
 				Pair(it.type as TypeParameter,map[it.type as TypeParameter]!!)
@@ -380,10 +376,9 @@ object FunctionRepos{
 		return concreteParametricNameSMT[first]!!
 	}
 
-	fun concretizeFunctionToSMT(name:String, paramTypes:List<Type>) : Pair<String,String>{
+	fun concretizeFunctionToSMT(name:String, paramTypes:List<Type>) {
 		if(Pair(name,paramTypes) !in parametricFunctionTypeMap )
 			throw Exception("Function $name with parameters of types ${paramTypes.map { it.qualifiedName }} not defined")
-
 		val map = parametricFunctionTypeMap[Pair(name,paramTypes)]!!
 		val functionDecl = this.parametricFunctions[name]!!
 
@@ -392,6 +387,15 @@ object FunctionRepos{
 
 		val definition = functionDecl.functionDef.getChild(0) as PureExp
 		val term = exprToTerm(translateExpression(definition, definition.type, emptyMap(), true, map).first)
+		(term.iterate { it is Function  && it.name in parametricFunctions } as Set<Function>).forEach{
+			func:Function ->
+				val funcName = func.name
+				val funcParamTypes = func.params.map { getReturnType(it) }
+				if(name != funcName || funcParamTypes!=paramTypes) {
+					concretizeNameToSMT(func)
+					concretizeFunctionToSMT(funcName, funcParamTypes)
+				}
+		}
 		val params = functionDecl.params
 		val sig = "\t($concreteFunctionName (${
 			params.fold("") { acc, nx ->
@@ -403,7 +407,7 @@ object FunctionRepos{
 
 		val def = "\t${term.toSMT()}\n"
 
-		return Pair(sig, def)
+		concreteFunctionsToSMT[Pair(name,paramTypes)] =  Pair(sig, def)
 	}
 
 }

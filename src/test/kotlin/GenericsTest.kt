@@ -1,9 +1,6 @@
 import io.kotlintest.shouldBe
-import io.kotlintest.specs.StringSpec
 import org.abs_models.crowbar.main.*
-import org.abs_models.crowbar.types.PostInvType
 import java.nio.file.Paths
-import kotlin.system.exitProcess
 
 class GenericsTest : CrowbarTest() {
     init {
@@ -190,6 +187,19 @@ class GenericsTest : CrowbarTest() {
                 val trdTParamSuccess = classDecl.extractMethodNode(postInv, "trdTParamSuccess", repos)
                 executeNode(trdTParamSuccess, repos, postInv) shouldBe true
 
+            }//
+
+            "$smt set"{
+                smtPath = smt
+
+                val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
+                val classDecl = model.extractClassDecl("Generics", "SetClass")
+
+                val callCustomContainsCallingLibContainsSuccess = classDecl.extractMethodNode(postInv, "callCustomContainsCallingLibContainsSuccess", repos)
+                executeNode(callCustomContainsCallingLibContainsSuccess, repos, postInv) shouldBe true
+
+                val callCustomContainsCallingLibContainsFail = classDecl.extractMethodNode(postInv, "callCustomContainsCallingLibContainsFail", repos)
+                executeNode(callCustomContainsCallingLibContainsFail, repos, postInv) shouldBe false
 
             }
         }

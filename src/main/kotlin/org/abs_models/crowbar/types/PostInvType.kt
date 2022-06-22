@@ -794,16 +794,15 @@ fun getReturnType(term: Term) : Type {
         return term.concrType!!
     }
     else if (term is Function) {
-
-        if(term.name in setOf("fst","fstT","head"))
+        if(term.name == "contains")
+            return ADTRepos.model!!.boolType
+        if(term.name in setOf("ABS.StdLib.Cons_0","ABS.StdLib.Insert_0", "fst","fstT","head"))
             return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0)
         if(term.name in setOf("snd","sndT"))
             return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(1)
         if(term.name == "trdT")
             return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(2)
-        if(term.name == "ABS.StdLib.Cons_0")
-            return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0)
-        if(term.name in setOf("ABS.StdLib.Cons_1","tail"))
+        if(term.name in setOf("ABS.StdLib.Cons_1", "ABS.StdLib.Insert_1","tail"))
             return (getReturnType(term.params[0]) as DataTypeType)
         if (term.name in arithFunction ){
             val left = getReturnType(term.params[0])

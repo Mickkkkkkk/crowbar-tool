@@ -32,6 +32,13 @@ def Pair<Int,Int> pairFuncSimpleSuccess(Int d, Pair<Int,Int> current) =
         Cons(x, xs) => when x > e then False else myContains(xs, e);
       };
 
+def Bool customContainsCallingContains<A>(Set<A> ss, A e) =
+  case ss {
+    EmptySet => False ;
+    Insert(e, _) => True;
+    Insert(x, xs) => when x > e then False else contains(xs, e);
+  };
+
 class MaybeClass(Maybe<Int> f, Type f1, Int fi) {
 
     [Ensures(Just(1) == Just(1))]
@@ -306,7 +313,18 @@ class TripleClass(Triple<Type,Int,Bool> triple,Int fi){
 
 }
 
+class SetClass{
 
+    [Ensures(result)]
+    Bool callCustomContainsCallingLibContainsSuccess(){
+        return customContainsCallingContains(Insert(1,Insert(2,Insert(3,EmptySet))), 1);
+    }
+
+    [Ensures(result)]
+    Bool callCustomContainsCallingLibContainsFail(){
+        return customContainsCallingContains(Insert(1,Insert(2,Insert(3,EmptySet))), 6);
+    }
+}
 
 {
 }
