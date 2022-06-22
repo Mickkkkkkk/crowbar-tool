@@ -8,22 +8,29 @@ data Type = Type1 | Type2;
 [Ensures(result != Just(Nothing))]
 def Maybe<Maybe<Int>> trivialFunction(Int x) = Just(Just(1));
 
-    //todo: uncomment when support for fst is added
-//[Spec: Ensures(fst(result)!=0)]
+[Spec: Ensures(fst(result)!=0)]
 def Pair<Int,Int> pairFuncSimpleSuccess(Int d, Pair<Int,Int> current) =
     case d {
         1 =>  Pair(1, 1);
         _ =>  Pair(2, 2);
     };
 
-    //todo: uncomment when support for fst/snd is added
-//[Spec: Ensures(fst(result)==snd(result))]
-//  def Pair<Int,Int> pairFuncWrappedSimpleSuccess(Int d, Pair<Int,Int> current) =
-//      case d {
-//         1 =>  Pair(fst(current), fst(current));
-//         _ =>  Pair(snd(current), snd(current));
-//      };
+    [Spec: Ensures(fst(result)==snd(result))]
+    def Pair<Int,Int> pairFuncWrappedSimpleSuccess(Int d, Pair<Int,Int> current) =
+        case d {
+            1 =>  Pair(fst(current), fst(current));
+            _ =>  Pair(snd(current), snd(current));
+        };
 
+
+    def A myHead<A>(List<A> b) = case b {Cons(head, _) => head;};
+
+    def Bool myContains<A>(List<A> ss, A e) =
+      case ss {
+        Nil => False ;
+        Cons(e, _) => True;
+        Cons(x, xs) => when x > e then False else myContains(xs, e);
+      };
 
 class MaybeClass(Maybe<Int> f, Type f1, Int fi) {
 
@@ -128,27 +135,23 @@ class PairClass(Pair<Type, Bool> f, Type f1, Type f2) {
         this.f = Pair(Type1,False);
     }
 
-    //todo: uncomment when support for fst is added
-//    [Ensures(fst(this.f) == Type1)]
+    [Ensures(fst(this.f) == Type1)]
     Unit fstSimpleSuccess(){
         this.f = Pair(Type1,False);
     }
 
-    //todo: uncomment when support for fst is added
-//    [Requires(fst(p) == Type1)]
-//    [Ensures(result == Type1)]
-//    Type fstParamSuccess(Pair<Type,Bool> p){
-//        return fst(p);
-//    }
+    [Requires(fst(p) == Type1)]
+    [Ensures(result == Type1)]
+    Type fstParamSuccess(Pair<Type,Bool> p){
+        return fst(p);
+    }
 
-    //todo: uncomment when support for snd is added
-//    [Ensures(snd(this.f) == False)]
+    [Ensures(snd(this.f) == False)]
     Unit sndSimpleSuccess(){
         this.f = Pair(Type1,False);
     }
 
-    //todo: uncomment when support for snd is added
-//    [Requires(snd(p) == False)]
+    [Requires(snd(p) == False)]
     [Ensures(result == False)]
     Bool sndParamSuccess(Pair<Int,Bool> p){
         return snd(p);
@@ -217,6 +220,26 @@ class ListClass(List<Type> list, Type ft){
         return Nil;
     }
 
+    [Spec:Ensures(result == 2)]
+    Int callMyHeadFuncSuccess(){
+        return myHead(Cons(2,Cons(3,Nil)));
+    }
+
+    [Spec:Ensures(result == 2)]
+    Int callMyHeadFuncFail(){
+        return myHead(Cons(6,Cons(3,Nil)));
+    }
+
+    [Spec: Ensures(result)]
+    Bool callMyContainsSuccess(){
+        return myContains(Cons(2,Cons(3,Cons(2,Cons(2,Nil)))), 3);
+    }
+
+    [Spec: Ensures(result)]
+    Bool callMyContainsFail(){
+        return myContains(Cons(2,Cons(3,Cons(2,Cons(2,Nil)))), 4);
+    }
+
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){
@@ -247,40 +270,36 @@ class TripleClass(Triple<Type,Int,Bool> triple,Int fi){
     Unit wrappedOldSuccess(){
         this.triple = Triple(Type1, 0,False);
     }
-    //todo: uncomment when support for fstT is added
-    //[Ensures(fstT(this.triple) == Type1)]
+
+    [Ensures(fstT(this.triple) == Type1)]
     Unit fstTSimpleSuccess(){
         this.triple = Triple(Type1,1,False);
     }
-    //todo: uncomment when support for fstT is added
-    //[Requires(fstT(p) == Type1)]
-    //[Ensures(result == Type1)]
-//    Type fstTParamSuccess(Triple<Type,Int,Bool> p){
-//        return fstT(p);
-//    }
 
-    //todo: uncomment when support for sndT is added
-    //[Ensures(sndT(this.triple) == 1)]
+    [Requires(fstT(p) == Type1)]
+    [Ensures(result == Type1)]
+    Type fstTParamSuccess(Triple<Type,Int,Bool> p){
+        return fstT(p);
+    }
+
+    [Ensures(sndT(this.triple) == 1)]
     Unit sndTSimpleSuccess(){
         this.triple = Triple(Type1,1,False);
     }
 
-    //todo: uncomment when support for sndT is added
-    //[Requires(sndT(p) == 1)]
-    //[Ensures(result == 1)]
-//    Int sndTParamSuccess(Triple<Type,Int,Bool> p){
-//        return sndT(p);
-//    }
+    [Requires(sndT(p) == 1)]
+    [Ensures(result == 1)]
+    Int sndTParamSuccess(Triple<Type,Int,Bool> p){
+        return sndT(p);
+    }
 
-    //todo: uncomment when support for trdT is added
-    //[Ensures(trdT(this.triple) == False)]
+    [Ensures(trdT(this.triple) == False)]
     Unit trdTSimpleSuccess(){
         this.triple = Triple(Type1,1,False);
     }
 
-    //todo: uncomment when support for trdT is added
-    //[Requires(trdT(p) == False)]
-    //[Ensures(result == False)]
+    [Requires(trdT(p) == False)]
+    [Ensures(result == False)]
     Bool trdTParamSuccess(Triple<Type,Int,Bool> p){
         return trdT(p);
     }

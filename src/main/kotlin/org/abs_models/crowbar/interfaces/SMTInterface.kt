@@ -6,6 +6,7 @@ import org.abs_models.crowbar.main.*
 import org.abs_models.crowbar.main.ADTRepos.libPrefix
 import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
+import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
 import org.abs_models.crowbar.types.booleanFunction
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
@@ -57,6 +58,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val allPhs = prePlaceholders.union(postPlaceholders)
     val placeholders = prePlaceholders.intersect(postPlaceholders)
     val globPlaceholders = prePlaceholders.union(postPlaceholders).map {  ProgVar("${it.name}_${it.concrType}", it.concrType)}
+
     (pre.iterate { it is Predicate }.toList() as List<Predicate>).map {
         oldPredicate ->
         var newFormula= (oldPredicate.iterate { el -> el is Placeholder && el in placeholders } as Set<Placeholder>).fold(oldPredicate) {
@@ -81,6 +83,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val preSMT =  (pre as Formula).toSMT()
     val negPostSMT = Not(post as Formula).toSMT()
     val functionDecl = FunctionRepos.toString()
+    val concretizeFunctionTosSMT= concretizeFunctionTosSMT()
     val primitiveTypesDecl = ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.joinToString("\n\t") { "(declare-sort ${it.qualifiedName} 0)" }
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
     val fieldsDecl = fields.joinToString("\n\t"){ "(declare-const ${it.name} Field)\n" +
@@ -154,6 +157,9 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     ${ADTRepos.heapsToSMT()}
 ;wildcards declaration
     $wildcards
+    
+; parametric functions decl
+    $concretizeFunctionTosSMT
 ;functions declaration
     $functionDecl
 ;generic functions declaration :to be implemented and added
@@ -227,7 +233,7 @@ fun createWildCard(dType: String,dTypeConcr: Type) : String{
     if(dTypeConcr.simpleName in setOf("Pair","Triple"))
         wildCardsConst[wildCard] = genericSMTName(dTypeConcr.qualifiedName,dTypeConcr)
     else
-        wildCardsConst[wildCard] = dType
+        wildCardsConst[wildCard] = translateType(dTypeConcr)
     return wildCard
 }
 
@@ -235,7 +241,7 @@ fun refreshWildCard(name: String, dType: String,dTypeConcr: Type) {
     if(dTypeConcr.simpleName in setOf("Pair","Triple"))
         wildCardsConst[name] = genericSMTName(dTypeConcr.qualifiedName,dTypeConcr)
     else
-        wildCardsConst[name] = dType
+        wildCardsConst[name] = translateType(dTypeConcr)
 }
 
 fun resetWildCards() {
@@ -249,7 +255,8 @@ fun translateType(type:Type) : String{
     else if (isConcreteGeneric(type) && !type.isFutureType) {
         ADTRepos.addGeneric(type as DataTypeType)
         genericTypeSMTName(type)
-    }
+    }else if(type.isTypeParameter)
+        throw Exception("Parameter Type Cannot Be Translated")
     else
         libPrefix(type.qualifiedName)
 }

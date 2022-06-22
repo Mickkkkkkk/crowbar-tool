@@ -334,6 +334,10 @@ open class Field(val name : String, val concrType :Type = UnknownType.INSTANCE) 
 }
 
 open class ProgVar(open val name: String, open val concrType: Type = UnknownType.INSTANCE) : Location, Term {
+
+    override fun toString(): String {
+        return prettyPrint()
+    }
     override var absExp: org.abs_models.frontend.ast.Exp? = null
     override fun prettyPrint(): String {
         return "$name:${concrType}"
@@ -342,6 +346,7 @@ open class ProgVar(open val name: String, open val concrType: Type = UnknownType
     //this ignores the type
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
+
         if (javaClass != other?.javaClass) return false
 
         other as ProgVar
@@ -357,9 +362,33 @@ open class ProgVar(open val name: String, open val concrType: Type = UnknownType
     override fun toSMT(indent:String) : String = name
 }
 
-data class Placeholder(override val name:String, override val concrType:Type) :ProgVar(name,concrType)
-data class WildCardVar(override val name:String, override val concrType:Type) :ProgVar(name,concrType)
-data class ReturnVar(val vParam : String, override val concrType: Type) : ProgVar("result", concrType)
+data class Placeholder(override val name:String, override val concrType:Type) :ProgVar(name,concrType){
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other)
+    }
+    override fun hashCode(): Int {
+        return super.hashCode()
+    }
+}
+data class WildCardVar(override val name:String, override val concrType:Type) :ProgVar(name,concrType){
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other)
+    }
+
+    override fun hashCode(): Int {
+        return super.hashCode()
+    }
+}
+data class ReturnVar(val vParam : String, override val concrType: Type) : ProgVar("result", concrType){
+
+    override fun equals(other: Any?): Boolean {
+        return super.equals(other)
+    }
+
+    override fun hashCode(): Int {
+        return super.hashCode()
+    }
+}
 
 fun appendStmt(stmt : Stmt, add : Stmt) : Stmt {
     return when(stmt){

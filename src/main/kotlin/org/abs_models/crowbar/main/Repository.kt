@@ -8,6 +8,7 @@ import org.abs_models.crowbar.types.getReturnType
 import org.abs_models.frontend.ast.*
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
+import org.abs_models.frontend.typechecker.TypeParameter
 import org.abs_models.frontend.typechecker.UnionType
 import org.abs_models.frontend.typechecker.UnknownType
 import kotlin.reflect.KClass
@@ -195,14 +196,29 @@ object ADTRepos {
 
 object FunctionRepos{
 
-	val builtInFunctionNames = setOf("abs")
+	val builtInFunctionNames = setOf("abs", "head","tail","fst","snd","fstT", "sndT","trdT")
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
+	val parametricFunctions = mutableMapOf<String,FunctionDecl>()
+	val concreteParametricNameSMT = mutableMapOf<Pair<String,List<Type>>,String>()
+	val parametricFunctionTypeMap = mutableMapOf<Pair<String,List<Type>>,Map<TypeParameter,Type>>()
+	val contractsFunctions = mutableMapOf<String,Pair<Formula,Formula>>()
 
     fun isKnown(str: String) = known.containsKey(str)
     fun get(str: String) = known.getValue(str)
 	fun hasContracts() = known.filter { hasContract(it.value) }.any()
 	private fun contracts() = known.filter { hasContract(it.value) }
+
+	fun initParametricFunctions(){
+		val direct = known.filter { !hasContract(it.value) }
+		if(direct.isNotEmpty()) {
+			for (pair in direct) {
+				if(pair.value is ParametricFunctionDecl){
+					parametricFunctions[functionNameSMT(pair.value)] = pair.value
+				}
+			}
+		}
+	}
     override fun toString() : String {
 	    val contracts = contracts()
 	    val direct = known.filter { !hasContract(it.value) }
@@ -229,7 +245,10 @@ object FunctionRepos{
 			    val callParams = params.joinToString(" ") { it.name }
 
 			    val funpre = extractSpec(pair.value, "Requires", pair.value.type)
-			    val funpost = extractSpec(pair.value, "Ensures", pair.value.type)
+			    var funpost = extractSpec(pair.value, "Ensures", pair.value.type)
+
+				val parametricFunctions = funpost.iterate { it is Function  && it.name in parametricFunctions} as Set<Function>
+				println("param:$parametricFunctions")
 
 				val paramsTyped = params.joinToString(" ") { "(${it.name} ${
 					translateType(it.type)
@@ -256,29 +275,20 @@ object FunctionRepos{
 			    var sigs = ""
 			    var defs = ""
 			    for (pair in direct) {
-				    val params = pair.value.params
 					val def =  pair.value.functionDef.getChild(0) as PureExp
-					sigs += "\t(${functionNameSMT(pair.value)} (${params.fold("") { acc, nx ->
-						"$acc (${nx.name} ${translateType(nx.type)})" }})  ${translateType(def.type)})\n"
 					val term =exprToTerm(translateExpression(def, def.type, emptyMap(),true).first)
-					if(term is Case) {
-						term.branches.forEach {
-							br -> when(br.matchTerm) {
-								is DataTypeConst -> {
-									val map = br.matchTerm.placeholdersToSMT()
-									map.forEach{
-										ADTRepos.placeholdersMap[it.key] = it.value.fold(term.match){acc,nx ->
-											Function(nx, listOf(acc))
-										}
-									}
-								}
+					if(pair.value !is ParametricFunctionDecl){
+						val params = pair.value.params
+						sigs += "\t(${functionNameSMT(pair.value)} (${
+							params.fold("") { acc, nx ->
+								"$acc (${nx.name} ${translateType(nx.type)})"
 							}
-						}
-
+						})  ${translateType(def.type)})\n"
+						defs += "\t${term.toSMT()}\n"
 					}
-					defs += "\t${term.toSMT()}\n"
 			    }
-				ret += "\n(define-funs-rec(\n$sigs)(\n$defs))"
+				if(sigs.isNotBlank())
+					ret += "\n(define-funs-rec(\n$sigs)(\n$defs))"
 		    }
 	    return ret
     }
@@ -291,15 +301,22 @@ object FunctionRepos{
 	fun init(model: Model) {
 		known.clear()
 		genericFunctions.clear()
+		parametricFunctions.clear()
+		parametricFunctionTypeMap.clear()
+		concreteParametricNameSMT.clear()
 		ADTRepos.clearConcreteGenerics()
 		for (mDecl in model.moduleDecls){
-			if(mDecl.name.startsWith("ABS.")) continue
+			if(mDecl.name.startsWith("ABS") && !mDecl.name.startsWith("ABS.StdLib")) continue
+
 			for (decl in mDecl.decls){
+
 				if(decl is FunctionDecl){
+					if(mDecl.name.startsWith("ABS") && decl.name !in setOf("head","tail","fst","snd","fstT", "sndT","trdT")) continue
 					initFunctionDef(decl)
 				}
 			}
 		}
+		initParametricFunctions()
 	}
 
 	private fun initFunctionDef(fDecl: FunctionDecl) {
@@ -326,8 +343,69 @@ object FunctionRepos{
 	}
 
 	fun functionNameSMT(functionDecl: FunctionDecl):String{
+		if(functionDecl.qualifiedName.startsWith("ABS."))
+			return functionDecl.name
 		return functionDecl.qualifiedName.replace(".", "-")
 	}
+
+	fun concretizeFunctionTosSMT() : String{
+
+		val concreteParametricFunctionsSMTLocals = concreteParametricNameSMT.keys.associate {
+			concretizeFunctionToSMT(it.first, it.second)
+		}
+		val sigsDefs = concreteParametricFunctionsSMTLocals.map { Pair(it.key, it.value) }.toMap()
+		if(sigsDefs.isNotEmpty())
+			return "\n(define-funs-rec (\n${sigsDefs.keys.joinToString(" ") { it }})(\n${sigsDefs.values.joinToString(" ") { it }}))"
+		return "; no parametric declarations"
+	}
+
+	fun getParameterMap(function: Function) : Map<TypeParameter,Type>{
+		if(function.name !in parametricFunctions)
+			throw Exception("Function ${function.name} not defined")
+		else {
+
+			val map = getMapTypes(parametricFunctions[function.name]!!.params.toList(), function.params)
+			val newMap = (parametricFunctions[function.name] as ParametricFunctionDecl).typeParameterList.associate{
+				Pair(it.type as TypeParameter,map[it.type as TypeParameter]!!)
+			}
+			return newMap
+		}
+	}
+
+	fun concretizeNameToSMT(function:Function): String{
+		val first = Pair(function.name,function.params.map{ getReturnType(it)})
+		parametricFunctionTypeMap[first] = getParameterMap(function)
+		if(first !in concreteParametricNameSMT)
+			concreteParametricNameSMT[first] = "${function.name}_${parametricFunctionTypeMap[first]!!.values.joinToString("_") { translateType(it) }}"
+		return concreteParametricNameSMT[first]!!
+	}
+
+	fun concretizeFunctionToSMT(name:String, paramTypes:List<Type>) : Pair<String,String>{
+		if(Pair(name,paramTypes) !in parametricFunctionTypeMap )
+			throw Exception("Function $name with parameters of types ${paramTypes.map { it.qualifiedName }} not defined")
+
+		val map = parametricFunctionTypeMap[Pair(name,paramTypes)]!!
+		val functionDecl = this.parametricFunctions[name]!!
+
+		val concreteFunctionName =
+			"${name}_${map.values.joinToString("_") { translateType(it) }}"
+
+		val definition = functionDecl.functionDef.getChild(0) as PureExp
+		val term = exprToTerm(translateExpression(definition, definition.type, emptyMap(), true, map).first)
+		val params = functionDecl.params
+		val sig = "\t($concreteFunctionName (${
+			params.fold("") { acc, nx ->
+				"$acc (${nx.name} ${
+						translateType(nx.type.applyBinding(map))
+				})"
+			}
+		})  ${translateType(definition.type.applyBinding(map))})\n"
+
+		val def = "\t${term.toSMT()}\n"
+
+		return Pair(sig, def)
+	}
+
 }
 
 data class Repository(val model : Model?,
@@ -385,4 +463,26 @@ data class Repository(val model : Model?,
             }
         }
     }
+}
+
+fun getMapTypes(parametricTypes:List<ParamDecl>, concreteType:List<Term>): Map<TypeParameter,Type>{
+	return parametricTypes.zip(concreteType).map {
+		getMapType(it.first.type, getReturnType(it.second))
+	}.asSequence().flatMap { it.asSequence() }.groupBy({ it.key }, { it.value }).mapValues { entry -> entry.value.first() }
+}
+
+fun getMapType(parametricType:Type, concreteType:Type) : Map<TypeParameter,Type>{
+	val map = mutableMapOf<TypeParameter,Type>()
+	if(parametricType is TypeParameter)
+		return mapOf(parametricType to concreteType)
+	else if(parametricType is DataTypeType && concreteType is DataTypeType)
+	parametricType.typeArgs.zip(concreteType.typeArgs).forEach {
+		if(it.first is TypeParameter)
+			map += Pair(it.first as TypeParameter, it.second)
+		else if(it.first is DataTypeType && it.second is DataTypeType)
+			map.putAll(getMapType(it.first as DataTypeType, it.second as DataTypeType))
+		else throw Exception("Cannot Map Types: [$parametricType] and [$concreteType]")
+	}
+	else if(parametricType is DataTypeType || concreteType is DataTypeType) throw Exception("Cannot Map Types: [$parametricType] and [$concreteType]")
+	return map
 }

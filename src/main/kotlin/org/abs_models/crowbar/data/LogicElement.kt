@@ -39,6 +39,7 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
     }
 
     override fun toSMT(indent:String): String {
+
         if(name == "valueOf") {
             if(params[0] is ProgVar)
                 return "(valueOf_${
@@ -63,10 +64,12 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
             return name
         }
         val list = params.fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
-
+        if(name in FunctionRepos.parametricFunctions)
+            return getSMT(FunctionRepos.concretizeNameToSMT(this), list)
         if(name in FunctionRepos.genericFunctions) {
             return ("(${FunctionRepos.genericFunctionsName(this)} $list)")
         }
+
         return getSMT(name, list)
     }
 }
@@ -132,6 +135,7 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
 
             }
         }
+        println("PAARR:$params")
         return mapMatch
     }
 
@@ -166,6 +170,10 @@ fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set
 data class Case(val match : Term, val expectedType :String, val branches : List<BranchTerm>, val freeVars : Set<String>,val expectedTypeConcr :Type) : Term {
     private lateinit var wildCardName: String
 
+    override fun prettyPrint(): String {
+        return "case ${match.prettyPrint()}{\n\t${branches.joinToString("\n\t") { it.prettyPrint()} }\n}"
+    }
+
     override fun toSMT(indent:String): String {
 
         if (branches.isNotEmpty() ){
@@ -177,17 +185,27 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
             val firstMatchTerm = Function(wildCardName)
             val branchTerm = branches.foldRight(firstMatchTerm as Term) { branchTerm: BranchTerm, acc: Term ->
                 if(branchTerm.matchTerm is DataTypeConst && isGeneric(branchTerm.matchTerm.concrType)){
-                    val matches = branchTerm.matchTerm.concreteParamsToSMT().map {
-                        Predicate("=", listOf(it.key, it.value.fold(match){
-                            acc: Term, s: String -> Function(s, listOf(acc))
-                        }))
+                    val matches =
+                        if(match is ProgVar && match.name == "data")
+                            True
+                        else
+                            branchTerm.matchTerm.concreteParamsToSMT().map {
+                                Predicate("=", listOf(it.key, it.value.fold(match){
+                                        acc: Term, s: String -> Function(s, listOf(acc))
+                                }))
                     }.fold(True){accFormula: Formula, predicate: Predicate ->  And(accFormula,predicate)}
 
+                    val map = branchTerm.matchTerm.placeholdersToSMT()
+                    map.forEach{
+                        ADTRepos.placeholdersMap[it.key] = it.value.fold(match){acc,nx ->
+                            Function(nx, listOf(acc))
+                        }
+                    }
                     val newMatchSMT = And(Is(genericSMTName(branchTerm.matchTerm.name, branchTerm.matchTerm.concrType!!), match), matches)
                     var branch = branchTerm.branch
                     val placeholders = branch.iterate { it is Placeholder }
                     if(placeholders.isNotEmpty())
-                        branch = replaceInTerm(branch, ADTRepos.placeholdersMap.filter { it.key in placeholders } as Map<ProgVar,Term>)
+                        branch = replaceInTerm(branch, ADTRepos.placeholdersMap.filter { it.key in placeholders } as Map<Term,Term>)
                     Ite(newMatchSMT, branch, acc)
                 }else
                 {
@@ -482,10 +500,10 @@ fun replaceInFormula(input: Formula, oldPredicate: Formula, newFormula: Formula)
     }
 }
 
-//todo: check if useful
-fun replaceInLogicElement(input: LogicElement, map : Map<ProgVar,Term>) : LogicElement{
+fun replaceInLogicElement(input: LogicElement, map : Map<Term,Term>) : LogicElement{
+    return if(input in map) map[input]!!
+    else
     return when(input){
-        is ProgVar -> if(input in map) map[input]!! else input
         is DataTypeConst -> DataTypeConst(input.name, input.concrType, input.params.map { p -> replaceInLogicElement(p, map) as Term })
         is Function -> Function(input.name, input.params.map { p -> replaceInLogicElement(p, map) as Term })
         is Predicate -> Predicate(input.name, input.params.map {
@@ -500,16 +518,17 @@ fun replaceInLogicElement(input: LogicElement, map : Map<ProgVar,Term>) : LogicE
     }
 }
 
-fun replaceInTerm(input: Term, map : Map<ProgVar,Term>) : Term{
-    return when(input){
-        is ProgVar -> if(input in map) map[input]!! else input
-        is DataTypeConst -> DataTypeConst(input.name, input.concrType, input.params.map { p -> replaceInLogicElement(p, map) as Term })
-        is Function -> Function(input.name, input.params.map { p -> replaceInTerm(p, map)})
-        is Ite -> Ite(replaceInLogicElement(input.condition,map) as Formula, replaceInTerm(input.term1,map),replaceInTerm(input.term2,map))
-        is Case -> Case(replaceInTerm(input.match,map), input.expectedType,input.branches.map { replaceInTerm(it,map) } as List<BranchTerm>,input.freeVars,input.expectedTypeConcr)
-        is BranchTerm -> BranchTerm(replaceInTerm(input.matchTerm,map),replaceInTerm(input.branch,map))
-        else -> throw Exception("ReplaceInTerm not defined for $input::${input.prettyPrint()}")
-    }
+fun replaceInTerm(input: Term, map : Map<Term,Term>) : Term{
+    return if(input in map) map[input]!!
+    else
+        when(input){
+            is DataTypeConst -> DataTypeConst(input.name, input.concrType, input.params.map { p -> replaceInTerm(p, map)  })
+            is Function -> Function(input.name, input.params.map { p -> replaceInTerm(p, map)})
+            is Ite -> Ite(replaceInLogicElement(input.condition,map) as Formula, replaceInTerm(input.term1,map),replaceInTerm(input.term2,map))
+            is Case -> Case(replaceInTerm(input.match,map), input.expectedType,input.branches.map { replaceInTerm(it,map) } as List<BranchTerm>,input.freeVars,input.expectedTypeConcr)
+            is BranchTerm -> BranchTerm(replaceInTerm(input.matchTerm,map),replaceInTerm(input.branch,map))
+            else -> input
+        }
 }
 
 fun apply(update: UpdateElement, input: LogicElement) : LogicElement {
