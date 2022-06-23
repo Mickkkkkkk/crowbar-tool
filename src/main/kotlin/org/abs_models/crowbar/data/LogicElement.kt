@@ -298,11 +298,13 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
 
     override fun toSMT(indent:String) : String {
         if(params.isEmpty()) return name
-        val boundTerms = boundTerms(params[0],params[1])
-        val boundParam0 = boundTerms.first
-        val boundParam1 = boundTerms.second
-        val list = listOf(boundParam0, boundParam1).fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
-        return getSMT(name, list)
+        val list = if(name == "=") {
+            val boundTerms = boundTerms(params[0], params[1])
+            val boundParam0 = boundTerms.first
+            val boundParam1 = boundTerms.second
+            listOf(boundParam0,boundParam1)
+        } else params
+        return getSMT(name, list.fold("") { acc, nx -> acc + " ${nx.toSMT()}" })
     }
 
     override fun equals(other: Any?): Boolean {
@@ -590,8 +592,16 @@ fun boundGeneric(bindingType: Type, unboundTerm: Term): Term {
     val bindingTypeHasArgs = bindingType is DataTypeType && bindingType.hasTypeArgs()
     val unboundTermHasArgs =
         unboundTerm is DataTypeConst && unboundTerm.concrType is DataTypeType && unboundTerm.concrType.hasTypeArgs()
-    if (bindingTypeHasArgs != unboundTermHasArgs || (bindingType as DataTypeType).numTypeArgs() != ((unboundTerm as DataTypeConst).concrType as DataTypeType).numTypeArgs())
+
+    if (bindingTypeHasArgs != unboundTermHasArgs || (bindingType as DataTypeType).numTypeArgs() != ((unboundTerm as DataTypeConst).concrType as DataTypeType).numTypeArgs()) {
+        if (bindingType.isBoundedType && unboundTerm is DataTypeConst){
+            if(unboundTerm.concrType!!.isUnknownType)
+                return DataTypeConst(unboundTerm.name, bindingType, unboundTerm.params)
+            return unboundTerm
+        }
+
         throw Exception("Term with unbound type \n$unboundTerm \nnot matching with binding type \n$bindingType")
+    }
 
     val bindingTypeArgs =
         if (bindingType.simpleName != "List" && bindingType.simpleName != "Set" && bindingType.simpleName != "Map") {

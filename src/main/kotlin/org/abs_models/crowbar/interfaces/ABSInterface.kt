@@ -6,6 +6,7 @@ import org.abs_models.crowbar.data.SkipStmt
 import org.abs_models.crowbar.main.ADTRepos
 import org.abs_models.crowbar.main.FunctionRepos
 import org.abs_models.crowbar.main.FunctionRepos.functionNameSMT
+import org.abs_models.crowbar.main.applyBinding
 import org.abs_models.crowbar.main.extractSpec
 import org.abs_models.crowbar.rule.FreshGenerator
 import org.abs_models.frontend.ast.*
@@ -160,25 +161,25 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             val type = if (input.type.isUnknownType) {
                             if(input.contextDecl.locallookupVarOrFieldName(input.name, true) == null)
                                 throw Exception("Field ${input.name} not defined")
-                            input.contextDecl.locallookupVarOrFieldName(input.name, true).type.applyBinding(map)
-                        } else input.type.applyBinding(map)
+                        applyBinding(input.contextDecl.locallookupVarOrFieldName(input.name, true).type ,map)
+                        } else applyBinding(input.type, map)
             Pair(Field(input.name + "_f",type), listOf())
         }
         is LetExp          ->{
-            val innerExpr = translateExpression(input.`val`, returnType.applyBinding(map), subst, fullExpr,map)
-            val outerExpr =  translateExpression(input.exp, returnType.applyBinding(map), subst + Pair(input.`var`.name, innerExpr.first), fullExpr,map)
+            val innerExpr = translateExpression(input.`val`, returnType, subst, fullExpr,map)
+            val outerExpr =  translateExpression(input.exp, returnType, subst + Pair(input.`var`.name, innerExpr.first), fullExpr,map)
             Pair(outerExpr.first, innerExpr.second + outerExpr.second)
         }//this handles overwrite correctly
         is IntLiteral      -> Pair(Const(input.content, input.model.intType), listOf())
         is GetExp          -> {
-            val expr = translateExpression(input.pureExp, returnType.applyBinding(map), subst, fullExpr,map)
+            val expr = translateExpression(input.pureExp, returnType, subst, fullExpr,map)
             Pair(readFut(expr.first), expr.second)
         }
 
         is NewExp          ->{
-            val exprs = input.paramList.map { translateExpression(it, returnType.applyBinding(map), subst, fullExpr) }
+            val exprs = input.paramList.map { translateExpression(it, returnType, subst, fullExpr) }
             val stmts = exprs.map{it.second}.flatten()
-            Pair(FreshGenerator.getFreshObjectId(input.type.qualifiedName, exprs.map { it.first } ,input.type.applyBinding(map)),stmts)//todo:add "implements" information to Repos
+            Pair(FreshGenerator.getFreshObjectId(input.type.qualifiedName, exprs.map { it.first } ,applyBinding(input.type, map)),stmts)//todo:add "implements" information to Repos
         }
         is NullExp         -> Pair(Const("0", input.model.intType), listOf())
         is ThisExp         -> Pair(Const("1", input.model.intType), listOf())
@@ -187,15 +188,16 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             if (input.name == "result") {
                 if (returnType.isUnknownType)
                     throw Exception("result type cannot be <UNKNOWN>")
-                Pair(ReturnVar(returnType.qualifiedName,returnType.applyBinding(map)), listOf())
+                Pair(ReturnVar(returnType.qualifiedName,returnType), listOf())
             } else {
+                val type = applyBinding(input.type, map)
                 if (input.type.isFutureType) {
-                    Pair(ProgVar(input.name, input.type.applyBinding(map)), listOf())
+                    Pair(ProgVar(input.name, type), listOf())
                 }
                 else if(subst.keys.contains(input.name)){
                     Pair(subst[input.name]!!, listOf())
                 } else
-                    Pair(ProgVar(input.name, input.type.applyBinding(map)), listOf())
+                    Pair(ProgVar(input.name, type), listOf())
             }
         }
         is Binary -> {
@@ -214,8 +216,8 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 is OrBoolExp -> "||"
                 else -> throw Exception("Translation of data ${input::class} not supported, term is $input")
             }
-            val exprLeft = translateExpression(input.left, returnType.applyBinding(map), subst, fullExpr,map)
-            val exprRight = translateExpression(input.right, returnType.applyBinding(map), subst, fullExpr,map)
+            val exprLeft = translateExpression(input.left, returnType, subst, fullExpr,map)
+            val exprRight = translateExpression(input.right, returnType, subst, fullExpr,map)
             Pair(SExpr(op, listOf(exprLeft.first, exprRight.first)), exprLeft.second + exprRight.second)
         }
         is Unary -> {
@@ -224,7 +226,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 is NegExp       -> "!"
                 else            -> throw Exception("Translation of data ${input::class} not supported, term is $input" )
             }
-            val expr = translateExpression(input.operand, returnType.applyBinding(map), subst, fullExpr,map)
+            val expr = translateExpression(input.operand, returnType, subst, fullExpr,map)
             Pair(SExpr(op, listOf(expr.first)), expr.second)
         }
         is DataConstructorExp -> {
@@ -235,12 +237,13 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 throw Exception("Wrong use of data constructor ${input.constructor} with parameters ${input.paramList} ")
             when (input.dataConstructor!!.name) {
                 "Unit" -> Pair(unitExpr(), listOf())
-                "True" -> Pair(Const("true", input.model.boolType.applyBinding(map)), listOf())
-                "False" -> Pair(Const("false", input.model.boolType.applyBinding(map)), listOf())
+                "True" -> Pair(Const("true", input.model.boolType), listOf())
+                "False" -> Pair(Const("false", input.model.boolType), listOf())
                 else -> {
-                    val exprs = input.params.map { translateExpression(it, returnType.applyBinding(map), subst, fullExpr,map) }
+                    val exprs = input.params.map { translateExpression(it, returnType, subst, fullExpr,map) }
                     val stmts = exprs.map{it.second}.flatten()
-                    Pair(DataTypeExpr(input.dataConstructor!!.qualifiedName, input.type.applyBinding(map).qualifiedName, input.type.applyBinding(map), exprs.map{it.first}), stmts)
+                    val newType = applyBinding(input.type, map)
+                    Pair(DataTypeExpr(input.dataConstructor!!.qualifiedName, newType.qualifiedName, newType, exprs.map{it.first}), stmts)
                 }
             }
         }
@@ -249,30 +252,30 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 throw Exception("FnApp cannot be named with special keywords: ${input.name}")
             } else {
                 if (input.name == "valueOf") {
-                    val expr = translateExpression(input.params.getChild(0), returnType.applyBinding(map), subst, fullExpr,map)
+                    val expr = translateExpression(input.params.getChild(0), returnType, subst, fullExpr,map)
                     Pair(readFut(expr.first), expr.second)
                 } else if (input.name in FunctionRepos.builtInFunctionNames) {
 
-                    val exprs = input.params.map { translateExpression(it, returnType.applyBinding(map), subst, fullExpr,map) }
+                    val exprs = input.params.map { translateExpression(it, returnType, subst, fullExpr,map) }
                     val stmts = exprs.map { it.second }.flatten()
 
                     Pair(SExpr(input.name, exprs.map { it.first }), stmts)
                 } else if (input.name == "hasRole") {
                     val roleConst =
                         Const("\"${(input.params.getChild(1) as StringLiteral).content}\"", input.model.stringType)
-                    val field = translateExpression(input.params.getChild(0), returnType.applyBinding(map), subst, fullExpr,map)
+                    val field = translateExpression(input.params.getChild(0), returnType, subst, fullExpr,map)
                     Pair(SExpr("hasRole", listOf(field.first, roleConst)), field.second)
                 } else if (input.decl is UnknownDecl) {
                     if (specialHeapKeywords.containsKey(input.name)) {
 
-                        val exprs = input.params.map { translateExpression(it, returnType.applyBinding(map), subst, fullExpr,map) }
+                        val exprs = input.params.map { translateExpression(it, returnType, subst, fullExpr,map) }
                         val stmts = exprs.map { it.second }.flatten()
 
                         Pair(SExpr(input.name, exprs.map { it.first }), stmts)
                     } else
                         throw Exception("Unknown declaration of function ${input.name}")
                 } else if (FunctionRepos.isKnown(input.decl.qualifiedName) || functionNameSMT(input.decl as FunctionDecl) in FunctionRepos.parametricFunctions) {
-                    val exprs = input.params.map { translateExpression(it, returnType.applyBinding(map), subst, fullExpr,map) }
+                    val exprs = input.params.map { translateExpression(it, returnType, subst, fullExpr,map) }
                     val stmts = exprs.map { it.second }.flatten()
                     Pair(SExpr(functionNameSMT(input.decl as FunctionDecl), exprs.map { it.first }), stmts)
                 } else if (input.decl.qualifiedName == "ABS.StdLib.random") {
@@ -284,14 +287,14 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             }
         }
         is IfExp -> {
-            val condExpr = translateExpression(input.condExp, returnType.applyBinding(map), subst, fullExpr,map)
-            val thenExpr = translateExpression(input.thenExp, returnType.applyBinding(map), subst, fullExpr,map)
-            val elseExpr = translateExpression(input.elseExp, returnType.applyBinding(map), subst, fullExpr,map)
+            val condExpr = translateExpression(input.condExp, returnType, subst, fullExpr,map)
+            val thenExpr = translateExpression(input.thenExp, returnType, subst, fullExpr,map)
+            val elseExpr = translateExpression(input.elseExp, returnType, subst, fullExpr,map)
             Pair((SExpr("ite", listOf(condExpr.first,thenExpr.first,elseExpr.first))), condExpr.second+thenExpr.second+elseExpr.second)
         }
         is Call -> {
             val met = input.methodSig.contextDecl.qualifiedName+"."+input.methodSig.name
-            val params = input.params.map {  translateExpression(it, returnType.applyBinding(map), subst,true,map).first }
+            val params = input.params.map {  translateExpression(it, returnType, subst,true,map).first }
 
             if(input is AsyncCall || input.callee  !is ThisExp)
                 Pair(CallExpr(met, params), listOf())
@@ -300,17 +303,17 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
         }
         is CaseExp ->{
             if(!fullExpr) {
-                val newVar = FreshGenerator.getFreshProgVar(returnType.applyBinding(map))
-                val matchExpr = translateExpression(input.expr, returnType.applyBinding(map), subst, fullExpr,map)
+                val newVar = FreshGenerator.getFreshProgVar(returnType)
+                val matchExpr = translateExpression(input.expr, returnType, subst, fullExpr,map)
 
 
                 val branchExprs = input.branchList.map {br ->
 
-                    val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(it.`var`.type.applyBinding(map))) }
+                    val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(applyBinding(it.`var`.type, map))) }
                     val newSubst = subst.toMutableMap().plus(wildCards)
                     Pair(
-                        translatePattern(br.left, br.patternExpType.applyBinding(map), returnType.applyBinding(map), newSubst,map),
-                        translateExpression(br.right, returnType.applyBinding(map), newSubst, fullExpr,map)
+                        translatePattern(br.left, applyBinding(br.patternExpType, map), returnType, newSubst,map),
+                        translateExpression(br.right, returnType, newSubst, fullExpr,map)
                     )
                 }
 
@@ -321,18 +324,18 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                     Branch(it.first, org.abs_models.crowbar.data.AssignStmt(newVar, it.second.first))
                 }.toMutableList()
                 if(list.last().matchTerm !is ConstructorPattern)
-                    list.add(Branch(FreshGenerator.getFreshWildCard(input.expr.type.applyBinding(map)),org.abs_models.crowbar.data.AssignStmt(newVar, FreshGenerator.getFreshProgVar(returnType.applyBinding(map)))))
+                    list.add(Branch(FreshGenerator.getFreshWildCard(applyBinding(input.expr.type, map)),org.abs_models.crowbar.data.AssignStmt(newVar, FreshGenerator.getFreshProgVar(returnType))))
 
                 Pair(newVar, stmts + BranchStmt(matchExpr.first, BranchList(list)))
             }else {
-                Pair(CaseExpr(translateExpression(input.expr, returnType.applyBinding(map), subst,true,map).first,
-                    ADTRepos.libPrefix(input.type.applyBinding(map).qualifiedName),
+                Pair(CaseExpr(translateExpression(input.expr, returnType, subst,true,map).first,
+                    ADTRepos.libPrefix(applyBinding(input.type, map).qualifiedName),
                     input.branchList.map {br ->
-                        val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(it.`var`.type.applyBinding(map))) }
+                        val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(applyBinding((it.`var`.type), map))) }
                         val newSubst = subst.toMutableMap().plus(wildCards)
                         BranchExpr(
-                            translatePattern(br.left, br.patternExpType.applyBinding(map), returnType.applyBinding(map), newSubst,map),
-                            translateExpression(br.right, returnType.applyBinding(map), newSubst,true,map).first)}, input.freeVars, input.type.applyBinding(map)),
+                            translatePattern(br.left, applyBinding(br.patternExpType, map), returnType, newSubst,map),
+                            translateExpression(br.right, returnType, newSubst,true,map).first)}, input.freeVars, applyBinding(input.type, map)),
                     listOf()
                 )
             }
@@ -344,8 +347,8 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             Pair(Const(input.content, input.model.floatType), listOf<org.abs_models.crowbar.data.Stmt>())
         }
         is AsExp -> {
-            val inputExpr = translateExpression(input.exp,returnType.applyBinding(map), subst, fullExpr,map)
-            val implements = ImplementsExpr(inputExpr.first,input.type.applyBinding(map))
+            val inputExpr = translateExpression(input.exp,returnType, subst, fullExpr,map)
+            val implements = ImplementsExpr(inputExpr.first,applyBinding(input.type, map))
             val res = SExpr("ite",
                 listOf(
                     SExpr("and", listOf(SExpr("not", listOf(SExpr("=", listOf(inputExpr.first, Const("0", input.model.intType))))),
@@ -355,8 +358,8 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             Pair(res, inputExpr.second as List<org.abs_models.crowbar.data.Stmt>)
         }
         is ImplementsExp -> {
-            val expr = translateExpression(input.exp, returnType.applyBinding(map), subst, fullExpr,map)
-            Pair(ImplementsExpr(expr.first, input.interfaceTypeUse.type.applyBinding(map)), expr.second as List<org.abs_models.crowbar.data.Stmt>)
+            val expr = translateExpression(input.exp, returnType, subst, fullExpr,map)
+            Pair(ImplementsExpr(expr.first, applyBinding(input.interfaceTypeUse.type, map)), expr.second as List<org.abs_models.crowbar.data.Stmt>)
         }
         else -> throw Exception("Translation of ${input::class} not supported, term is $input" )
     }
@@ -380,8 +383,8 @@ fun translateGuard(input: Guard, returnType: Type, subst: Map<String, Expr>) : E
 
 fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, subst: Map<String, Expr>,map : Map<TypeParameter, Type> = mapOf()) : Expr =
     when (pattern) {
-        is PatternVarUse -> if (pattern.name in subst) subst[pattern.name]!! else ProgVar(pattern.name, pattern.type)
-        is PatternVar -> if (pattern.`var`.name in subst) subst[pattern.`var`.name]!! else ProgVar(pattern.`var`.name, pattern.type)
+        is PatternVarUse -> if (pattern.name in subst) subst[pattern.name]!! else ProgVar(pattern.name, applyBinding(pattern.type, map))
+        is PatternVar -> if (pattern.`var`.name in subst) subst[pattern.`var`.name]!! else ProgVar(pattern.`var`.name, applyBinding(pattern.type, map))
         is LiteralPattern -> translateExpression(pattern.literal, returnType, subst,true,map).first
         is UnderscorePattern ->  FreshGenerator.getFreshWildCard(overrideType)
         is ConstructorPattern -> {
@@ -392,7 +395,7 @@ fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, su
                 "ABS.StdLib.${pattern.constructor}"
             }
             else typeWithModule(pattern.constructor, pattern.moduleDecl.name)
-            DataTypeExpr(qualName,pattern.type.applyBinding(map).qualifiedName,pattern.type.applyBinding(map),pattern.params.map { translatePattern(it,it.inhType.applyBinding(map), returnType.applyBinding(map), subst,map) })
+            DataTypeExpr(qualName,applyBinding(pattern.type, map).qualifiedName,applyBinding(pattern.type, map),pattern.params.map { translatePattern(it,applyBinding(it.inhType,map), returnType, subst,map) })
         }
         else -> throw Exception("Translation of complex constructors is not supported")
     }

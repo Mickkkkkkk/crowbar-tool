@@ -252,7 +252,7 @@ fun resetWildCards() {
 fun translateType(type:Type) : String{
     return if(type.isUnknownType)
         throw Exception("Unknown Type Cannot be Translated")
-    else if (isConcreteGeneric(type) && !type.isFutureType) {
+    else if (isGeneric(type)) {
         ADTRepos.addGeneric(type as DataTypeType)
         genericTypeSMTName(type)
     }else if(type.isTypeParameter)

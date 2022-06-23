@@ -277,12 +277,11 @@ fun genericTypeSMTName(type : Type) :String{
 
 fun genericSMTName(name :String, type : Type) :String{
     val ret =
-
         if(isGeneric(type)){
-            if((type as DataTypeType).typeArgs[0].isTypeParameter)
-                return name
+//            if((type as DataTypeType).typeArgs[0].isTypeParameter)
+//                return name
             "${name}_${
-                type.typeArgs.joinToString("_") { 
+                (type as DataTypeType).typeArgs.joinToString("_") { 
                 if(it.toString() == "Unbound Type" || it.isUnknownType)
                     "UNBOUND"
                 else {

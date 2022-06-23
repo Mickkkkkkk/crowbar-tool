@@ -6,11 +6,7 @@ import org.abs_models.crowbar.interfaces.*
 import org.abs_models.crowbar.tree.SymbolicNode
 import org.abs_models.crowbar.types.getReturnType
 import org.abs_models.frontend.ast.*
-import org.abs_models.frontend.typechecker.DataTypeType
-import org.abs_models.frontend.typechecker.Type
-import org.abs_models.frontend.typechecker.TypeParameter
-import org.abs_models.frontend.typechecker.UnionType
-import org.abs_models.frontend.typechecker.UnknownType
+import org.abs_models.frontend.typechecker.*
 import kotlin.reflect.KClass
 import kotlin.system.exitProcess
 
@@ -35,11 +31,12 @@ object ADTRepos {
 	val objects : MutableMap<String,UnionType> = mutableMapOf()
 
 	private val concreteGenerics :MutableMap<String, DataTypeType> = mutableMapOf()
+	val parametricGenerics :MutableMap<String, List<TypeParameter>> = mutableMapOf()
 	private val usedHeaps = mutableSetOf<String>()
 
 	//These are either handled manually as special cases (e.g., float, Exception)
 	private val ignorableBuiltInDataTypes : Set<String> = setOf(
-			"ABS.StdLib.Map",
+			//"ABS.StdLib.Map",
 			"ABS.StdLib.Float",
 			"ABS.StdLib.Time",
 			"ABS.StdLib.Duration",
@@ -83,17 +80,39 @@ object ADTRepos {
 		concreteGenerics.clear()
 	}
 
+	fun isKnownGeneric(type: DataTypeType) = type.toString() in concreteGenerics
+
 	fun addGeneric(type : DataTypeType) {
-		if(!type.typeArgs.any { it.isUnknownType }) {
-			type.typeArgs.map {
-				if (isBoundGeneric(it)) {
-					addGeneric(it as DataTypeType)
+		if(!type.typeArgs.any{it.isUnknownType}) {
+			if (!isKnownGeneric(type)) {
+
+				val isParametricGenerics = type.typeArgs.isNotEmpty() && type.typeArgs.first() is TypeParameter
+				if (isParametricGenerics && type.qualifiedName !in parametricGenerics) {
+					parametricGenerics[type.qualifiedName] = type.typeArgs as List<TypeParameter>
+				} else {
+					concreteGenerics[type.toString()] = type
+					if (!type.typeArgs.any { it.isUnknownType }) {
+						type.typeArgs.map { if (isGeneric(it)) addGeneric(it as DataTypeType) }
+						type.decl.dataConstructorList.forEach { tt ->
+							tt.constructorArgList.forEach { constr ->
+								if (constr.type is DataTypeType) {
+									val t = type
+									val mapTypeParamType =
+										((type.decl.type as DataTypeType).typeArgs as List<TypeParameter>).zip(
+											type.typeArgs
+										).toMap()
+									val boundType = (constr.type as DataTypeType).applyBinding(mapTypeParamType)
+									if (isGeneric(boundType)) addGeneric(boundType as DataTypeType)
+								}
+							}
+
+						}
+					}
+					val heapName = genericTypeSMTName(type)
+					dtypeMap[heapName] = HeapDecl(heapName)
+					addUsedHeap(heapName)
 				}
 			}
-			concreteGenerics[type.toString()] = type
-			val heapName = genericTypeSMTName(type)
-			dtypeMap[heapName] = HeapDecl(heapName)
-			addUsedHeap(heapName)
 		}
 	}
 
@@ -186,6 +205,7 @@ object ADTRepos {
 	}
 	fun libPrefix(type: String): String {
 		return when {
+			type == "Unbound Type" -> "UNBOUND"
 			type == "<UNKNOWN>" -> throw Exception("Unknown Type")
 			dtypeMap.containsKey(type) || type.startsWith("ABS.StdLib") -> type
 			else -> "ABS.StdLib.Int"
@@ -196,7 +216,7 @@ object ADTRepos {
 
 object FunctionRepos{
 
-	val builtInFunctionNames = setOf("abs", "head","tail","fst","snd","fstT", "sndT","trdT", "contains")
+	val builtInFunctionNames = setOf("abs", "head","tail","fst","snd","fstT", "sndT","trdT", "contains","emptyMap", "lookup")
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
 	val parametricFunctions = mutableMapOf<String,FunctionDecl>()
@@ -379,6 +399,7 @@ object FunctionRepos{
 	fun concretizeFunctionToSMT(name:String, paramTypes:List<Type>) {
 		if(Pair(name,paramTypes) !in parametricFunctionTypeMap )
 			throw Exception("Function $name with parameters of types ${paramTypes.map { it.qualifiedName }} not defined")
+
 		val map = parametricFunctionTypeMap[Pair(name,paramTypes)]!!
 		val functionDecl = this.parametricFunctions[name]!!
 
@@ -386,11 +407,12 @@ object FunctionRepos{
 			"${name}_${map.values.joinToString("_") { translateType(it) }}"
 
 		val definition = functionDecl.functionDef.getChild(0) as PureExp
-		val term = exprToTerm(translateExpression(definition, definition.type, emptyMap(), true, map).first)
+		val term = exprToTerm(translateExpression(definition, applyBinding(definition.type, map), emptyMap(), true, map).first)
+
 		(term.iterate { it is Function  && it.name in parametricFunctions } as Set<Function>).forEach{
 			func:Function ->
 				val funcName = func.name
-				val funcParamTypes = func.params.map { getReturnType(it) }
+				val funcParamTypes = func.params.map { applyBinding(getReturnType(it), map) }
 				if(name != funcName || funcParamTypes!=paramTypes) {
 					concretizeNameToSMT(func)
 					concretizeFunctionToSMT(funcName, funcParamTypes)
@@ -400,10 +422,10 @@ object FunctionRepos{
 		val sig = "\t($concreteFunctionName (${
 			params.fold("") { acc, nx ->
 				"$acc (${nx.name} ${
-						translateType(nx.type.applyBinding(map))
+						translateType(applyBinding(nx.type, map))
 				})"
 			}
-		})  ${translateType(definition.type.applyBinding(map))})\n"
+		})  ${translateType(applyBinding(definition.type, map))})\n"
 
 		val def = "\t${term.toSMT()}\n"
 
@@ -470,9 +492,12 @@ data class Repository(val model : Model?,
 }
 
 fun getMapTypes(parametricTypes:List<ParamDecl>, concreteType:List<Term>): Map<TypeParameter,Type>{
-	return parametricTypes.zip(concreteType).map {
+	val zip = parametricTypes.zip(concreteType)
+	val map = zip.map {
 		getMapType(it.first.type, getReturnType(it.second))
-	}.asSequence().flatMap { it.asSequence() }.groupBy({ it.key }, { it.value }).mapValues { entry -> entry.value.first() }
+	}
+	val sequence = map.asSequence()
+	return sequence.flatMap { it.asSequence() }.groupBy({ it.key }, { it.value }).mapValues { entry -> entry.value.first() }
 }
 
 fun getMapType(parametricType:Type, concreteType:Type) : Map<TypeParameter,Type>{
@@ -489,4 +514,19 @@ fun getMapType(parametricType:Type, concreteType:Type) : Map<TypeParameter,Type>
 	}
 	else if(parametricType is DataTypeType || concreteType is DataTypeType) throw Exception("Cannot Map Types: [$parametricType] and [$concreteType]")
 	return map
+}
+
+
+fun applyBinding(type:Type, map: Map<TypeParameter,Type>) :Type {
+	val ret= if(type is DataTypeType){
+		val argTypes = mutableListOf<Type>()
+		type.typeArgs.forEach {
+			argTypes+=applyBinding(it , map)
+		}
+		DataTypeType(type.getDecl(), argTypes)
+
+		}else {
+			if ((type is TypeParameter || type is BoundedType) && type in map)  map[type]!! else type
+		}
+	return ret
 }

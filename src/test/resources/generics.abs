@@ -326,5 +326,60 @@ class SetClass{
     }
 }
 
+class MapClass{
+
+    [Ensures(result)]
+    Bool callEmptyMapOnEmptyMapSuccess(){
+        return emptyMap(EmptyMap);
+    }
+
+    [Ensures(!result)]
+    Bool callEmptyMapOnEmptyMapFail(){
+        return emptyMap(EmptyMap);
+    }
+
+    [Ensures(!result)]
+    Bool callEmptyMapOnNonEmptyMapSuccess(){
+        return emptyMap(InsertAssoc(Pair(1,2), EmptyMap));
+    }
+
+    [Ensures(result)]
+    Bool callEmptyMapOnNonEmptyMapFail(){
+        return emptyMap(InsertAssoc(Pair(1,2), EmptyMap));
+    }
+
+    [Ensures(result == Nothing)]
+    Maybe<Int> callLookupOnEmptyMapSuccess(){
+        return lookup(EmptyMap, 1);
+    }
+
+    [Ensures(result != Nothing)]
+    Maybe<Int> callLookupOnEmptyMapFail(){
+        return lookup(EmptyMap, 1);
+    }
+
+
+    [Ensures(result == Nothing)]
+    Maybe<Int> callLookupOnNonEmptyMapWithoutElemSuccess(){
+        return lookup(EmptyMap, 1);
+    }
+
+    [Ensures(result != Nothing)]
+    Maybe<Int> callLookupOnNonEmptyMapWithoutElemFail(){
+        return lookup(EmptyMap, 1);
+    }
+
+    [Ensures(result == Just(2))]
+    Maybe<Int> callLookupOnNonEmptyMapWithElemSuccess(){
+        return lookup(InsertAssoc(Pair(1,2), EmptyMap), 1);
+    }
+
+    [Ensures(result == Just(1))]
+    Maybe<Int> callLookupOnNonEmptyMapWithElemFail(){
+        return lookup(InsertAssoc(Pair(1,2), EmptyMap), 1);
+    }
+
+}
+
 {
 }

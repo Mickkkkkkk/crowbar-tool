@@ -202,6 +202,40 @@ class GenericsTest : CrowbarTest() {
                 executeNode(callCustomContainsCallingLibContainsFail, repos, postInv) shouldBe false
 
             }
+
+            "$smt map"{
+                smtPath = smt
+
+                val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
+                val classDecl = model.extractClassDecl("Generics", "MapClass")
+
+                val callEmptyMapOnEmptyMapSuccess = classDecl.extractMethodNode(postInv, "callEmptyMapOnEmptyMapSuccess", repos)
+                executeNode(callEmptyMapOnEmptyMapSuccess, repos, postInv) shouldBe true
+
+                val callEmptyMapOnEmptyMapFail = classDecl.extractMethodNode(postInv, "callEmptyMapOnEmptyMapFail", repos)
+                executeNode(callEmptyMapOnEmptyMapFail, repos, postInv) shouldBe false
+
+                val callEmptyMapOnNonEmptyMapSuccess = classDecl.extractMethodNode(postInv, "callEmptyMapOnNonEmptyMapSuccess", repos)
+                executeNode(callEmptyMapOnNonEmptyMapSuccess, repos, postInv) shouldBe true
+
+                val callEmptyMapOnNonEmptyMapFail = classDecl.extractMethodNode(postInv, "callEmptyMapOnNonEmptyMapFail", repos)
+                executeNode(callEmptyMapOnNonEmptyMapFail, repos, postInv) shouldBe false
+
+                val callLookupOnEmptyMapSuccess = classDecl.extractMethodNode(postInv, "callLookupOnEmptyMapSuccess", repos)
+                executeNode(callLookupOnEmptyMapSuccess, repos, postInv) shouldBe true
+
+                val callLookupOnEmptyMapFail = classDecl.extractMethodNode(postInv, "callLookupOnEmptyMapFail", repos)
+                executeNode(callLookupOnEmptyMapFail, repos, postInv) shouldBe false
+
+                val callLookupOnNonEmptyMapWithoutElemSuccess = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithoutElemSuccess", repos)
+                executeNode(callLookupOnNonEmptyMapWithoutElemSuccess, repos, postInv) shouldBe true
+                val callLookupOnNonEmptyMapWithoutElemFail = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithoutElemFail", repos)
+                executeNode(callLookupOnNonEmptyMapWithoutElemFail, repos, postInv) shouldBe false
+                val callLookupOnNonEmptyMapWithElemSuccess = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithElemSuccess", repos)
+                executeNode(callLookupOnNonEmptyMapWithElemSuccess, repos, postInv) shouldBe true
+                val callLookupOnNonEmptyMapWithElemFail = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithElemFail", repos)
+                executeNode(callLookupOnNonEmptyMapWithElemFail, repos, postInv) shouldBe false
+                }
         }
     }
 }
