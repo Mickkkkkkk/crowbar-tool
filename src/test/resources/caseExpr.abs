@@ -76,6 +76,23 @@ def Int recSum(Pair<Int,Int> x) = case x {Pair(0,snd) => snd | Pair(fst1,snd1)=>
 
 def Int sumFstPairMultSndTrdList(Pair<Int,List<Int>> x) = case x {Pair(fst,Cons(snd,Cons(trd,_))) => fst+snd*trd;};
 
+
+data DataList = DataNil | ConsData(Data, DataList) ;
+type Data = Int ;
+
+def Data dataHead(DataList dl) = case dl { ConsData(d,l) => d ; };
+def DataList dataTail(DataList dl) = case dl { ConsData(d,l) => l ; };
+
+def DataList appendData(Data d, DataList list)
+  = concat(list, ConsData(d,DataNil));
+
+def DataList concat(DataList l1 , DataList l2) =
+case l1 {
+    DataNil => l2 ;
+    ConsData(hd,tl) => ConsData(hd, concat(tl,l2)) ;
+};
+
+
 class E(ComplexOption fieldA){
 
     [Spec : Requires( i == 1 )]

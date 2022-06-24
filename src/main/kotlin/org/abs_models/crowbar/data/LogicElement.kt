@@ -208,7 +208,7 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                     Ite(newMatchSMT, branch, acc)
                 }else
                 {
-                    var indexOfParam = -1
+
                     val matchSMT =
                         if (branchTerm.matchTerm is DataTypeConst)
                             extractPatternMatching(match, branchTerm.matchTerm, freeVars)
@@ -216,13 +216,33 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                             Eq(match, branchTerm.matchTerm)
                         else
                             True
-                    if (branchTerm.matchTerm is DataTypeConst) {
-                        indexOfParam = branchTerm.matchTerm.params.indexOf(branchTerm.branch)
-                    }
+                    var placeholderToBeReplaced: Set<Placeholder>
                     val branch =
-                        if (branchTerm.matchTerm is DataTypeConst && indexOfParam != -1)
-                            Function("${branchTerm.matchTerm.name}_$indexOfParam", listOf(match))
-                        else
+                    if (branchTerm.matchTerm is DataTypeConst) {
+                        placeholderToBeReplaced =  branchTerm.branch.iterate { it is Placeholder } as Set<Placeholder>
+                        val mapPlaceholderToFunctions = placeholderToBeReplaced.associate {
+                            Pair(it,
+                            getFunctionForDataTypeConstElem(branchTerm.matchTerm, it).
+                            foldRight(match) { functionName: String, function: Term ->
+                                Function(
+                                    functionName,
+                                    listOf(function)
+                                )
+                            })
+                        }
+
+                        if(mapPlaceholderToFunctions.isNotEmpty())
+                            replaceInTerm(branchTerm.branch, mapPlaceholderToFunctions as Map<Term, Term>)
+                        else {
+                            val list = getFunctionForDataTypeConstElem(branchTerm.matchTerm, branchTerm.branch)
+
+                            if (list.isNotEmpty())
+                                list.foldRight(match) { functionName: String, function: Term ->
+                                    Function(functionName, listOf(function))
+                                }
+                            else branchTerm.branch
+                        }
+                    }else
                             branchTerm.branch
 
 
@@ -650,3 +670,21 @@ fun boundTerms(term1:Term, term2: Term):Pair<Term,Term>{
     return Pair(boundTerm1,boundTerm2)
 }
 
+
+fun getFunctionForDataTypeConstElem(dataTypeConst: DataTypeConst, elem : Term) : List<String>{
+    var index = -1
+    index = (dataTypeConst.params.indexOf(elem))
+    if (index != -1) return  listOf("${dataTypeConst.name}_$index")
+    else{
+        for (param in dataTypeConst.params){
+            index++
+            if(param is DataTypeConst) {
+                val innerList = getFunctionForDataTypeConstElem(param,elem)
+                if(innerList.isNotEmpty())
+                    return listOf("${dataTypeConst.name}_$index") + innerList
+            }
+        }
+    }
+    return listOf()
+
+}
