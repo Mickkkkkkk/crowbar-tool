@@ -217,7 +217,14 @@ object ADTRepos {
 
 object FunctionRepos{
 
-	val builtInFunctionNames = setOf("abs", "head","tail","fst","snd","fstT", "sndT","trdT", "contains","emptyMap", "lookup")
+	val builtInFunctionNames = setOf(
+		"abs",
+		"head","tail", "appendright", "concatenate", //list
+		"fst","snd", //pair
+		"fstT", "sndT","trdT", //triple
+		"contains", //set
+		"emptyMap", "lookup" //map
+	)
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
 	val parametricFunctions = mutableMapOf<String,FunctionDecl>()
