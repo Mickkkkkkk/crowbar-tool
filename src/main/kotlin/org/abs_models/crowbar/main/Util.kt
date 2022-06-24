@@ -12,6 +12,8 @@ import org.abs_models.crowbar.tree.getStrategy
 import org.abs_models.frontend.ast.*
 import org.abs_models.frontend.typechecker.Type
 import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.nio.file.Path
 import kotlin.reflect.KClass
 import kotlin.reflect.full.companionObject
@@ -33,6 +35,7 @@ fun load(paths : List<Path>) : Pair<Model,Repository> {
     output("Crowbar  : loading files....")
     val input = paths.map{ File(it.toString()) }
     if(input.any { !it.exists() }) {
+        if(reporting) throw Exception("file not found: $paths")
         System.err.println("file not found: $paths")
         exitProcess(-1)
     }
@@ -41,6 +44,7 @@ fun load(paths : List<Path>) : Pair<Model,Repository> {
     val model = try {
         org.abs_models.frontend.parser.Main().parse(input)
     } catch (e : Exception) {
+        if(reporting) reportException("error during parsing, aborting", e)
         e.printStackTrace()
         System.err.println("error during parsing, aborting")
         exitProcess(-1)
@@ -169,6 +173,7 @@ fun Model.extractFunctionDecl(moduleName: String, funcName: String) : FunctionDe
     }
     val funcDecl : FunctionDecl? = moduleDecl.decls.firstOrNull { it is FunctionDecl && it.name == funcName } as FunctionDecl?
     if(funcDecl == null){
+        if(reporting) throw Exception("function not found: ${moduleName}.$funcName")
         System.err.println("function not found: ${moduleName}.$funcName")
         exitProcess(-1)
     }
@@ -178,15 +183,16 @@ fun Model.extractFunctionDecl(moduleName: String, funcName: String) : FunctionDe
 fun Model.extractClassDecl(moduleName: String, className: String) : ClassDecl {
     val moduleDecl = moduleDecls.firstOrNull { it.name == moduleName }
     if(moduleDecl == null){
+        if(reporting) throw Exception("module not found: $moduleName")
         System.err.println("module not found: $moduleName")
         exitProcess(-1)
     }
     val classDecl : ClassDecl? = moduleDecl.decls.firstOrNull { it is ClassDecl && it.name == className } as ClassDecl?
     if(classDecl == null){
+        if(reporting) throw Exception("class not found: ${moduleName}.${className}")
         System.err.println("class not found: ${moduleName}.${className}")
         exitProcess(-1)
     }
-
     return classDecl
 }
 
@@ -271,6 +277,45 @@ fun ClassDecl.executeAll(repos: Repository, usedType: KClass<out DeductType>): B
     return totalClosed
 }
 
+fun ClassDecl.executeAllREPORT(repos: Repository, usedType: KClass<out DeductType>): Boolean{
+    try {
+        val iNode = extractInitialNode(usedType)
+        var totalClosed = executeNode(iNode, repos, usedType, "<init>")
+        var csv = ""
+        output("Crowbar  : Verification <init>: $totalClosed")
+        for (m in methods) {
+            csv += "${m.fileName};${(m.parent.parent as ClassDecl).name};${m.methodSig.name};"
+            try {
+                output("Crowbar  : Verification ${m.methodSig.name} started...")
+                val node = extractMethodNode(usedType, m.methodSig.name, repos)
+                val closed = executeNode(node, repos, usedType, m.methodSig.name)
+                output("Crowbar  : Verification ${m.methodSig.name}: $closed")
+                totalClosed = totalClosed && closed
+
+                csv += "OK;;\n"
+            } catch (e: Exception) {
+                val sw = StringWriter()
+                (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
+                val cause = sw.toString()
+                output("Crowbar  : Verification ${m.methodSig.name} failed due to exception:")
+//            output(sw.toString())
+                csv += "ERR;${cause}\n"
+                totalClosed = false
+            }
+        }
+        File("${reportPath}").appendText(csv)
+        return totalClosed
+    }catch (e: Exception) {
+        val sw = StringWriter()
+        (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
+        val cause = sw.toString()
+        val csv = "${this.fileName};${this.name};;M_ERR;${cause}\n"
+        File("${reportPath}").appendText(csv)
+        output("Crowbar  : Verification of initialNode failed due to exception")
+        return false
+    }
+
+}
 
 /***************************
 General utility

@@ -68,6 +68,7 @@ object ADTRepos {
 		try {
 			dtypeMap[libPrefix(dType)]!!
 		}catch ( e:KotlinNullPointerException ){
+			if(reporting)  throw Exception("Type $dType not supported")
 			System.err.println("Type $dType not supported")
 				exitProcess(-1)
 		}
@@ -342,6 +343,7 @@ object FunctionRepos{
 		if(fDecl.functionDef is ExpFunctionDef){
 			known[fDecl.qualifiedName] = fDecl
 		} else {
+			if(reporting) throw Exception("builtin types not supported")
 			System.err.println("builtin types not supported")
 			exitProcess(-1)
 		}

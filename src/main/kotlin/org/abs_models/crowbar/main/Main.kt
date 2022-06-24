@@ -17,6 +17,8 @@ import org.abs_models.crowbar.interfaces.filterAtomic
 import org.abs_models.crowbar.types.LocalTypeType
 import org.abs_models.crowbar.types.PostInvType
 import org.abs_models.frontend.ast.*
+import java.io.File
+import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.system.exitProcess
 
@@ -28,6 +30,8 @@ var smtPath  = "z3"
 var verbosity = Verbosity.NORMAL
 var investigate = false
 var conciseProofs = false
+var reportPath = "/tmp/report.csv"
+var reporting = false
 
 sealed class CrowOption{
     data class MethodOption(val path : String) : CrowOption()
@@ -71,6 +75,8 @@ class Main : CliktCommand() {
     private val freedom    by   option("--freedom", "-fr", help="Performs a simple check for potentially deadlocking methods").flag()
     private val invFlag    by   option("--investigate", "-inv", help="Generate counterexamples for uncloseable branches").flag()
     private val conciseProofsFlag    by  option("--concise_proofs", "-cp", help="Generate concise proofs omitting unused declarations").flag()
+    private val report        by   option("--report-path", "-rp", help="Path to a file used to store report of verification").path().default(Paths.get(reportPath))
+    val reportFlag        by   option("--report", "-r", help="Path to a file used to store report of verification").flag()
 
     override fun run() {
 
@@ -80,6 +86,11 @@ class Main : CliktCommand() {
         verbosity = Verbosity.values()[verbose]
         investigate = invFlag
         conciseProofs = conciseProofsFlag
+        reportPath = "$report"
+        reporting = reportFlag
+
+        if(!Files.exists(report))
+            File(reportPath).writeText("")
 
         if(investigate && deductType != PostInvType::class)
             output("Crowbar  : Counterexamples for types other than PostInv are not supported and may produce unexpected output", Verbosity.SILENT)
@@ -110,7 +121,10 @@ class Main : CliktCommand() {
             is  CrowOption.FullOption -> {
                 var finalClose = true
                 for( classDecl in model.extractAllClasses() ) {
-                    val totalClosed = classDecl.executeAll(repos, deductType)
+
+                    val totalClosed =
+                        if(!reportFlag) classDecl.executeAll(repos, deductType)
+                        else classDecl.executeAllREPORT(repos, deductType)
                     output("Crowbar  : Verification result ${classDecl.qualifiedName}: $totalClosed\n", Verbosity.SILENT)
                     finalClose = finalClose && totalClosed
                 }

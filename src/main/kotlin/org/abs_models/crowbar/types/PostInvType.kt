@@ -23,6 +23,8 @@ import org.abs_models.frontend.ast.*
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
 import org.abs_models.frontend.typechecker.UnknownType
+import java.io.PrintWriter
+import java.io.StringWriter
 import kotlin.system.exitProcess
 
 
@@ -41,6 +43,7 @@ interface PostInvType : DeductType{
     override fun extractMethodNode(classDecl: ClassDecl, name : String, repos: Repository) : SymbolicNode {
         val mDecl = classDecl.methods.firstOrNull { it.methodSig.name == name }
         if (mDecl == null) {
+            if(reporting) throw Exception("method not found: ${classDecl.qualifiedName}.${name}")
             System.err.println("method not found: ${classDecl.qualifiedName}.${name}")
             exitProcess(-1)
         }
@@ -67,9 +70,9 @@ interface PostInvType : DeductType{
                 succeedsSet = extractContextSet(mDecl, "Succeeds")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            if(reporting) reportException("error during translation, aborting", e)
             System.err.println("error during translation, aborting")
-            exitProcess(-1)
+            throw e
         }
         output("Crowbar-v: method post-condition: ${metpost.prettyPrint()}", Verbosity.V)
         output("Crowbar-v: object invariant: ${objInv.prettyPrint()}",Verbosity.V)
@@ -147,6 +150,7 @@ interface PostInvType : DeductType{
             objInv = extractSpec(classDecl, "ObjInv", UnknownType.INSTANCE)
             objPre = extractSpec(classDecl, "Requires",UnknownType.INSTANCE)
         } catch (e: Exception) {
+            if(reporting) reportException("error during translation, aborting", e)
             e.printStackTrace()
             System.err.println("error during translation, aborting")
             exitProcess(-1)
@@ -166,6 +170,7 @@ interface PostInvType : DeductType{
     override fun exctractMainNode(model: Model) : SymbolicNode {
 
         if(!model.hasMainBlock()){
+            if(reporting) throw Exception("model has no main block!")
             System.err.println("model has no main block!")
             exitProcess(-1)
         }

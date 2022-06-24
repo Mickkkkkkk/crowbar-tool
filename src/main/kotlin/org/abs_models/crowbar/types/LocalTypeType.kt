@@ -32,6 +32,7 @@ interface LocalTypeType : DeductType {
     override fun extractMethodNode(classDecl: ClassDecl, name: String, repos: Repository): SymbolicNode {
         val mDecl = classDecl.methods.firstOrNull { it.methodSig.name == name }
         if (mDecl == null) {
+            if(reporting) throw Exception("method not found: ${classDecl.qualifiedName}.$name")
             System.err.println("method not found: ${classDecl.qualifiedName}.$name")
             exitProcess(-1)
         }
@@ -53,6 +54,7 @@ interface LocalTypeType : DeductType {
             body = getNormalizedStatement(mDecl.block)
             roles = extractRoleSpec(classDecl)
         } catch (e: Exception) {
+            if(reporting) reportException("error during translation, aborting:", e)
             e.printStackTrace()
             System.err.println("error during translation, aborting")
             exitProcess(-1)
