@@ -23,8 +23,24 @@ import org.abs_models.frontend.typechecker.TypeParameter
 import org.abs_models.frontend.typechecker.UnknownType
 
 /**
- *   Translates the ABS AST into our IR
+ *   This file contains the function to translate the ABS AST into our IR
  */
+
+/*
+ Helper function for different kinds of top-level expressions that are unified in the IR
+ */
+fun translateTopLevel(loc : Location, exp: Exp, returnType: Type, input: Stmt, subst: Map<String, Expr>, type: Type, assign : Boolean = false) : org.abs_models.crowbar.data.Stmt =
+    when(exp) {
+        is GetExp       -> SyncStmt(loc, translateExpression(exp, returnType, subst,true).first, extractResolves(input), FreshGenerator.getFreshPP())
+        is NewExp       -> AllocateStmt(loc, translateExpression(exp, returnType, subst,true).first)
+        is AsyncCall    -> CallStmt(loc, translateExpression(exp.callee, returnType, subst,true).first, translateExpression(exp, returnType, subst,true).first as CallExpr)
+        is SyncCall     -> desugar(loc, type, exp, returnType, subst)
+        else            -> {
+            val expr = translateExpression(exp, returnType, subst, false)
+            if(assign) appendDesugaredCaseExprs(expr.second, org.abs_models.crowbar.data.AssignStmt(loc,expr.first))
+            else appendDesugaredCaseExprs(expr.second, ExprStmt(expr.first))
+        }
+    }
 
 
 fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.crowbar.data.Stmt {
@@ -37,35 +53,12 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
         is org.abs_models.frontend.ast.SkipStmt -> return SkipStmt
         is ExpressionStmt ->{
             val loc = FreshGenerator.getFreshProgVar(input.type)
-            val exp = input.exp
-            val type = input.type
-            return when(exp) {
-                is GetExp       -> SyncStmt(loc, translateExpression(exp, returnType, subst,true).first, extractResolves(input), FreshGenerator.getFreshPP())
-                is NewExp       -> AllocateStmt(loc, translateExpression(exp, returnType, subst,true).first)
-                is AsyncCall    -> CallStmt(loc, translateExpression(exp.callee, returnType, subst,true).first, translateExpression(exp, returnType, subst,true).first as CallExpr)
-                is SyncCall     -> desugar(loc, type, exp, returnType, subst)
-                else            -> {
-
-                    val expr = translateExpression(exp, returnType, subst, false)
-                    appendDesugaredCaseExprs(expr.second, ExprStmt(expr.first))
-                } // Cannot be SkipStmt, as an expression can throw an exception
-            }
+            return translateTopLevel(loc, input.exp, returnType, input, subst, input.type)
         }
         is VarDeclStmt -> {
-
             if(input.varDecl.name in specialKeywords) throw Exception("VarDecl cannot be named with special keywords: $input")
             val loc = ProgVar(input.varDecl.name, input.varDecl.type)
-            return when(val exp = input.varDecl.initExp ?: NullExp()) {
-                is GetExp       -> SyncStmt(loc, translateExpression(exp, returnType, subst,true).first, extractResolves(input), FreshGenerator.getFreshPP())
-                is NewExp       -> AllocateStmt(loc, translateExpression(exp, returnType, subst, true).first)
-                is AsyncCall    -> CallStmt(loc, translateExpression(exp.callee, returnType, subst, true).first, translateExpression(exp, returnType, subst,true).first as CallExpr)
-                is SyncCall     -> desugar(loc, input.type, exp, returnType, subst)
-
-                else -> {
-                    val expr = translateExpression(exp, returnType, subst, false)
-                    appendDesugaredCaseExprs(expr.second, org.abs_models.crowbar.data.AssignStmt(loc,expr.first))
-                }
-            }
+            return translateTopLevel(loc, input.varDecl.initExp ?: NullExp(), returnType, input, subst, input.type, true)
         }
         is AssignStmt -> {
             val loc:Location = if(input.varNoTransform is FieldUse) Field(input.varNoTransform.name+"_f",input.varNoTransform.type)
@@ -73,24 +66,13 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
                 input.varNoTransform.name,
                 input.varNoTransform.type
             )
-            return when(val exp = input.valueNoTransform) {
-                is GetExp       -> SyncStmt(loc, translateExpression(exp, returnType, subst, true).first, extractResolves(input), FreshGenerator.getFreshPP())
-                is NewExp       -> AllocateStmt(loc, translateExpression(exp, returnType, subst, true).first)
-                is AsyncCall    -> CallStmt(loc, translateExpression(exp.callee, returnType, subst, true).first, translateExpression(exp, returnType, subst,true).first as CallExpr)
-                is SyncCall     -> desugar(loc, input.type, exp, returnType, subst)
-
-                else -> {
-                    val expr = translateExpression(exp, returnType, subst, false)
-                    appendDesugaredCaseExprs(expr.second, org.abs_models.crowbar.data.AssignStmt(loc,expr.first))
-                }
-            }
+            return translateTopLevel(loc, input.valueNoTransform, returnType, input, subst, input.type, true)
         }
         is Block -> {
             val subs = input.stmts.map {translateStatement(it, subst)  }
             if(subs.isEmpty())  return SkipStmt
-            val last = subs.last()
             val tail = subs.dropLast(1)
-            return tail.foldRight( last) { nx, acc -> appendStmt(nx, acc) }
+            return tail.foldRight( subs.last() ) { nx, acc -> appendStmt(nx, acc) }
         }
         is WhileStmt -> {
             val expr = translateExpression(input.conditionNoTransform, returnType, subst, false)
@@ -100,7 +82,8 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
                 extractSpec(input,"WhileInv", returnType)))
         }
         is AwaitStmt -> return org.abs_models.crowbar.data.AwaitStmt(translateGuard(input.guard, returnType, subst),FreshGenerator.getFreshPP())
-        is SuspendStmt -> return org.abs_models.crowbar.data.AwaitStmt(Const("true", input.model.boolType),FreshGenerator.getFreshPP()) // We should be able to model a suspend; as an await True;
+        // A suspend; is just shorthand for await True;
+        is SuspendStmt -> return org.abs_models.crowbar.data.AwaitStmt(Const("true", input.model.boolType),FreshGenerator.getFreshPP())
         is ReturnStmt -> {
             val expr = translateExpression(input.retExp, returnType, subst, false)
             return appendDesugaredCaseExprs(expr.second, org.abs_models.crowbar.data.ReturnStmt(expr.first))
@@ -153,6 +136,8 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
 
 fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>, fullExpr:Boolean, map: Map<TypeParameter, Type> = mapOf()) : Pair<Expr, List<org.abs_models.crowbar.data.Stmt>> {
     val converted = when(input){
+        //because this is also used in the specification translation we need to check some things that are otherwise ensured by the
+        //ABS compiler, like field references in interfaces
         is FieldUse -> {
             if(input.name in specialKeywords) throw Exception("Fields cannot be named with special keywords: $input")
             if(input.contextDecl is InterfaceDecl)
@@ -165,11 +150,12 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                         } else applyBinding(input.type, map)
             Pair(Field(input.name + "_f",type), listOf())
         }
+        //this handles overwrite correctly
         is LetExp          ->{
             val innerExpr = translateExpression(input.`val`, returnType, subst, fullExpr,map)
             val outerExpr =  translateExpression(input.exp, returnType, subst + Pair(input.`var`.name, innerExpr.first), fullExpr,map)
             Pair(outerExpr.first, innerExpr.second + outerExpr.second)
-        }//this handles overwrite correctly
+        }
         is IntLiteral      -> Pair(Const(input.content, input.model.intType), listOf())
         is GetExp          -> {
             val expr = translateExpression(input.pureExp, returnType, subst, fullExpr,map)
@@ -230,12 +216,14 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             Pair(SExpr(op, listOf(expr.first)), expr.second)
         }
         is DataConstructorExp -> {
+            //Because in specifications this is not checked by the ABS compiler
             if(input.dataConstructor == null){
                 throw Exception("Data constructor ${input.constructor} not defined")
             }
             if(input.type.isUnknownType)
                 throw Exception("Wrong use of data constructor ${input.constructor} with parameters ${input.paramList} ")
             when (input.dataConstructor!!.name) {
+                //special treatment of some builtin primitives
                 "Unit" -> Pair(unitExpr(), listOf())
                 "True" -> Pair(Const("true", input.model.boolType), listOf())
                 "False" -> Pair(Const("false", input.model.boolType), listOf())
@@ -251,15 +239,19 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             if (input.name in specialKeywordNoHeap) {
                 throw Exception("FnApp cannot be named with special keywords: ${input.name}")
             } else {
+                //this is the function for accessing the value in a future
                 if (input.name == "valueOf") {
                     val expr = translateExpression(input.params.getChild(0), returnType, subst, fullExpr,map)
                     Pair(readFut(expr.first), expr.second)
-                } else if (input.name in FunctionRepos.builtInFunctionNames) {
 
+                //special treatment for builtins
+                } else if (input.name in FunctionRepos.builtInFunctionNames) {
                     val exprs = input.params.map { translateExpression(it, returnType, subst, fullExpr,map) }
                     val stmts = exprs.map { it.second }.flatten()
 
                     Pair(SExpr(input.name, exprs.map { it.first }), stmts)
+
+                //For local session type
                 } else if (input.name == "hasRole") {
                     val roleConst =
                         Const("\"${(input.params.getChild(1) as StringLiteral).content}\"", input.model.stringType)
@@ -278,6 +270,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                     val exprs = input.params.map { translateExpression(it, returnType, subst, fullExpr,map) }
                     val stmts = exprs.map { it.second }.flatten()
                     Pair(SExpr(functionNameSMT(input.decl as FunctionDecl), exprs.map { it.first }), stmts)
+                //random is not a function
                 } else if (input.decl.qualifiedName == "ABS.StdLib.random") {
                     Pair(
                         FreshGenerator.getFreshProgVar(input.model.intType),
@@ -301,6 +294,8 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             else
                 Pair(SyncCallExpr(met, params), listOf())
         }
+
+
         is CaseExp ->{
             if(!fullExpr) {
                 val newVar = FreshGenerator.getFreshProgVar(returnType)
@@ -407,6 +402,9 @@ fun typeWithModule(type : String, moduleName : String) :String {
     return constructor
 }
 
+/*
+Collects all non-composed (= atomic) statements
+ */
 fun filterAtomic(input: Stmt?, app : (Stmt) -> Boolean) : Set<Stmt> {
     if (input == null) return emptySet()
     return when (input) {

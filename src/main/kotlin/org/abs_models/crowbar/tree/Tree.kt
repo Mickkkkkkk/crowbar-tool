@@ -60,6 +60,9 @@ data class LogicNode(
     override fun normalize() = Unit
 }
 
+/*
+We distinguish between the symbolic execution state (in the SymbolicState) and the SymbolicNode, which is a node in the proof tree.
+ */
 data class SymbolicNode(
     val content : SymbolicState,
     var children : List<SymbolicTree> = emptyList(),

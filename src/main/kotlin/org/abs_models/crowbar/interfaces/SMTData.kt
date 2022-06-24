@@ -9,9 +9,13 @@ import org.abs_models.frontend.ast.InterfaceDecl
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
 
+/*
+ * This file contains the data structures for the SMT translation
+ */
 interface ProofElement: Anything {
     fun toSMT(indent:String="") : String //isInForm is set when a predicate is expected, this is required for the interpretation of Bool Terms as Int Terms
 }
+
 
 data class HeapDecl(val dtype: String) : ProofElement {
 
@@ -275,11 +279,8 @@ fun genericTypeSMTName(type : Type) :String{
     return genericSMTName(if (!type.qualifiedName.contains(".")) type.toString() else type.qualifiedName, type)
 }
 
-fun genericSMTName(name :String, type : Type) :String{
-    val ret =
-        if(isGeneric(type)){
-//            if((type as DataTypeType).typeArgs[0].isTypeParameter)
-//                return name
+fun genericSMTName(name :String, type : Type) : String =
+        if(isGeneric(type))
             "${name}_${
                 (type as DataTypeType).typeArgs.joinToString("_") { 
                 if(it.toString() == "Unbound Type" || it.isUnknownType)
@@ -288,10 +289,7 @@ fun genericSMTName(name :String, type : Type) :String{
                     genericTypeSMTName(it)
                 }
             }}"
-        }else name
-
-    return ret
-}
+        else name
 
 fun getSMT(name: String, params: String): String{
     val ret =

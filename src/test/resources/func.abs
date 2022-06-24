@@ -2,7 +2,7 @@ module Func;
 
 
 def Int f(Int n) = anAdd(n,10)-9;
-def Int anAdd(Int x, Int y) =x + y;
+def Int anAdd(Int x, Int y) = x + y;
 def Int fib(Int n) = if(n <= 2) then 1 else fib(n-1)+fib(n-2);
 
 [Spec : Requires(this.x >= 0)]
