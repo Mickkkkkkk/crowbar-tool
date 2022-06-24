@@ -9,7 +9,7 @@ fun reportException(message:String, e:Exception){
         val sw = StringWriter()
         (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
         val cause = sw.toString()
-        throw Exception("$message: $cause")
+        throw Exception("$message: ${cause.split("\n")[0]}")
     }
 }
 
