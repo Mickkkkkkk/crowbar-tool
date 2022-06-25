@@ -69,8 +69,8 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
         if(name in FunctionRepos.genericFunctions) {
             return ("(${FunctionRepos.genericFunctionsName(this)} $list)")
         }
-
-        return getSMT(name, list)
+        val realName = if(name == "%") "mod" else name
+        return getSMT(realName, list)
     }
 }
 

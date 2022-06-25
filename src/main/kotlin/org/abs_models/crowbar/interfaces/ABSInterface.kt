@@ -167,8 +167,8 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             val stmts = exprs.map{it.second}.flatten()
             Pair(FreshGenerator.getFreshObjectId(input.type.qualifiedName, exprs.map { it.first } ,applyBinding(input.type, map)),stmts)//todo:add "implements" information to Repos
         }
-        is NullExp         -> Pair(Const("0", input.model.intType), listOf())
-        is ThisExp         -> Pair(Const("1", input.model.intType), listOf())
+        is NullExp         -> Pair(Const("0", if(returnType.decl != null) returnType.decl.model.intType else input.model.intType), listOf())
+        is ThisExp         -> Pair(Const("1", if(returnType.decl != null) returnType.decl.model.intType else input.model.intType), listOf())
         is VarUse -> {
             if(input.name in specialKeywords) throw Exception("VarUse cannot be named with special keywords: $input")
             if (input.name == "result") {
@@ -197,6 +197,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 is AddAddExp -> "+"
                 is SubAddExp -> "-"
                 is MultMultExp -> "*"
+                is ModMultExp -> "%"
                 is DivMultExp -> "/"
                 is AndBoolExp -> "&&"
                 is OrBoolExp -> "||"
