@@ -297,12 +297,33 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
 
 
         is CaseExp ->{
+
+            /*
+            * fullExpr can true only when the function containing the "case" is called in the proof obligation
+            * otherwise the CaseExpr is desugared
+            */
+
+
             if(!fullExpr) {
+
+
+                /*
+                * the CaseExpr is desugared to a CaseStmt which assign a fresh var "newVar" retured as translated expression
+                * together with the list of statements that need to be prepended to the occurrence of (usually assignment of) the mentioned variable.
+                */
                 val newVar = FreshGenerator.getFreshProgVar(returnType)
                 val matchExpr = translateExpression(input.expr, returnType, subst, fullExpr,map)
 
 
+
+                /*
+                * the desugaring is done recursively on each branch
+                */
                 val branchExprs = input.branchList.map {br ->
+
+                    /*
+                    * placeholders are generated when fresh variables occur as parameter of the matching term
+                    */
 
                     val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(applyBinding(it.`var`.type, map))) }
                     val newSubst = subst.toMutableMap().plus(wildCards)
@@ -312,22 +333,53 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                     )
                 }
 
+                /*
+                * statements recursively generated are pre-pended to the assignment of the new variable
+                */
+
                 val stmts = matchExpr.second + branchExprs.map { it.second.second }
                     .flatten() + org.abs_models.crowbar.data.AssignStmt(newVar, Const("0", input.model.intType))
+
+
+                /*
+                * each generated branch assign to the new var the translation of the expression in the branch (no statements can occur inside an expression)
+                */
 
                 val list: MutableList<Branch> = branchExprs.map {
                     Branch(it.first, org.abs_models.crowbar.data.AssignStmt(newVar, it.second.first))
                 }.toMutableList()
-                if(list.last().matchTerm !is ConstructorPattern)
+
+                /*
+                * since the CaseExpr allows absence of the Underscore Pattern we add it
+                */
+
+                if(list.last().matchTerm !is UnderscorePattern)
                     list.add(Branch(FreshGenerator.getFreshWildCard(applyBinding(input.expr.type, map)),org.abs_models.crowbar.data.AssignStmt(newVar, FreshGenerator.getFreshProgVar(returnType))))
 
+                /*
+                * the value returned is a pair with the new variable and the list of generated of statement
+                */
                 Pair(newVar, stmts + BranchStmt(matchExpr.first, BranchList(list)))
             }else {
+
                 Pair(CaseExpr(translateExpression(input.expr, returnType, subst,true,map).first,
                     ADTRepos.libPrefix(applyBinding(input.type, map).qualifiedName),
                     input.branchList.map {br ->
+                        /*
+                        * placeholders are generated when fresh variables occur as parameter of the matching term
+                        */
+
                         val wildCards = br.left.freePatternVars.map { Pair(it.`var`.name, FreshGenerator.createPlaceholder(applyBinding((it.`var`.type), map))) }
+
+                        /*
+                        the subst map is updated with to replace the variables that behave as placeholders with the corresponding placeholder
+                        */
+
                         val newSubst = subst.toMutableMap().plus(wildCards)
+
+                        /*
+                         *  a branch expression is generated and its paramenter are recursively translated
+                        */
                         BranchExpr(
                             translatePattern(br.left, applyBinding(br.patternExpType, map), returnType, newSubst,map),
                             translateExpression(br.right, returnType, newSubst,true,map).first)}, input.freeVars, applyBinding(input.type, map)),

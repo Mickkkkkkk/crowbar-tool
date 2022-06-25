@@ -39,12 +39,18 @@ val smtHeader = """
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
     resetWildCards()
+
+    // application of update to generate pre and post condition
     var  pre = deupdatify(ante)
     var post = deupdatify(succ)
-    val fields =  (pre.iterate { it is Field } + post.iterate { it is Field }) as Set<Field>
 
+
+    // storing information about used heap for concise proofs
+    val fields =  (pre.iterate { it is Field } + post.iterate { it is Field }) as Set<Field>
     setUsedHeaps(fields.map{libPrefix(it.concrType.qualifiedName)}.toSet())
 
+
+    // generation of the generics occurring in pre and post condition
     ((pre.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) } + post.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) }) as Set<DataTypeConst>).map {
         ADTRepos.addGeneric(it.concrType!! as DataTypeType) }
 
@@ -59,6 +65,8 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val placeholders = prePlaceholders.intersect(postPlaceholders)
     val globPlaceholders = prePlaceholders.union(postPlaceholders).map {  ProgVar("${it.name}_${it.concrType}", it.concrType)}
 
+
+    // replacing placeholders in precondition
     (pre.iterate { it is Predicate }.toList() as List<Predicate>).map {
         oldPredicate ->
         var newFormula= (oldPredicate.iterate { el -> el is Placeholder && el in placeholders } as Set<Placeholder>).fold(oldPredicate) {
@@ -69,6 +77,8 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
          newFormula= Exists(wildcards.toList(), newFormula)
         pre = replaceInFormula(pre as Formula, oldPredicate, newFormula)
     }
+
+    // replacing placeholders in precondition
     post.iterate { it is Predicate }.map {
             oldPredicate ->
         if(placeholders.isNotEmpty()) {
@@ -84,8 +94,11 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val negPostSMT = Not(post as Formula).toSMT()
     val functionDecl = FunctionRepos.toString()
     val concretizeFunctionTosSMT= concretizeFunctionTosSMT()
+    //generation of translation for primitive
     val primitiveTypesDecl = ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.joinToString("\n\t") { "(declare-sort ${it.qualifiedName} 0)" }
+    //generation of translation for wildcards
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
+    //generation of translation for fields and variable declarations
     val fieldsDecl = fields.joinToString("\n\t"){ "(declare-const ${it.name} Field)\n" +
             if(it.concrType.isInterfaceType)
                 "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
@@ -96,6 +109,9 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
             "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
         else ""
     }
+
+
+    //generation of translation for object "implements" assertions
     val objectImpl = heaps.joinToString("\n"){
         x:Function ->
         if(x.name in objects)
@@ -112,6 +128,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
         }else ""
 
     }
+    //generation of translation for object declaration
     val objectsDecl = heaps.joinToString("\n\t"){"(declare-fun ${it.name} (${it.params.joinToString (" "){
         term ->
         if(term is DataTypeConst) {
@@ -124,7 +141,12 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     }}) Int)"
 
     }
+
+    //generation of translation for function declaration
     val funcsDecl = funcs.joinToString("\n") { "(declare-const ${it.name} Int)"}
+
+
+    //generation of translation for fields contraints: each field has to be unique
     var fieldsConstraints = ""
     fields.forEach { f1 -> fields.minus(f1).forEach{ f2 -> if(libPrefix(f1.concrType.qualifiedName) == libPrefix(f2.concrType.qualifiedName)) fieldsConstraints += "(assert (not ${Eq(f1,f2).toSMT()}))" } } //??
 
@@ -204,6 +226,7 @@ fun String.runCommand(
     null
 }
 
+
 fun plainSMTCommand(smtRep: String) : String? {
     val path = "${tmpPath}out.smt2"
     File(path).writeText(smtRep)
@@ -249,6 +272,9 @@ fun resetWildCards() {
     countWildCard = 0
 }
 
+    /*
+    * Function that translates an ABS type into the SMT representation
+    */
 fun translateType(type:Type) : String{
     return if(type.isUnknownType)
         throw Exception("Unknown Type Cannot be Translated")
