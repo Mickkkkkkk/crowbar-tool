@@ -221,28 +221,48 @@ data class DefineSortSMT(val name :String, val type: String, val params :List<St
     }
 }
 
+data class DeclareSortSMT(val name :String): ProofElement {
+    override fun toSMT(indent:String): String {
+        return "$indent(declare-sort $name 0)"
+    }
+}
+
 open class DeclareConstSMT(val name :String, val type: String): ProofElement {
     override fun toSMT(indent:String): String {
         return "$indent(declare-const $name $type)"
     }
 }
 
+class FunDecl(val name:String,val typeParams:List<String>, val type:String):ProofElement{
+    override fun toSMT(indent: String): String {
+        return "$indent(declare-fun $name (${typeParams.joinToString(" ")}) $type)"
+    }
+
+}
+
+class SolverOption(val option:String):ProofElement{
+    override fun toSMT(indent: String): String {
+        return "$indent($option)"
+    }
+
+}
+
 class VarDecl(name :String, type: String) : DeclareConstSMT(name,type)
 
 class FieldDecl(name :String, type: String) : DeclareConstSMT(name,type)
 
-data class BlockProofElements(val proofElement: List<ProofElement>, val nameBlock: String) :ProofElement{
+data class BlockProofElements(val proofElement: List<ProofElement>, val header: String, val footer:String="") :ProofElement{
     override fun toSMT(indent: String): String {
-        var block = "$indent$nameBlock\n"
-        block+=proofElement.joinToString("\n") { it.toSMT(indent) }
-        return "$block\n"
+        var block = "$indent$header\n"
+        block+=proofElement.joinToString("$indent\n") { it.toSMT(indent) }
+        return "$block${if(footer.isNotBlank()) "\n$indent$footer" else ""}"
     }
 
 }
 
 data class Assertion(val logicElement: LogicElement) :ProofElement{
     override fun toSMT(indent: String): String {
-        return "(assert ${logicElement.toSMT(indent)})"
+        return "$indent(assert ${logicElement.toSMT(indent)})"
     }
 }
 

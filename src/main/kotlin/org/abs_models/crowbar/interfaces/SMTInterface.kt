@@ -4,7 +4,6 @@ import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Function
 import org.abs_models.crowbar.main.*
 import org.abs_models.crowbar.main.ADTRepos.libPrefix
-import org.abs_models.crowbar.main.ADTRepos.model
 import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
@@ -14,32 +13,31 @@ import org.abs_models.frontend.typechecker.Type
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-
-val valueOf = """
-    (declare-fun   valueOf_ABS_StdLib_Int (ABS.StdLib.Fut) Int)
-    (declare-fun   valueOf_ABS_StdLib_Bool(ABS.StdLib.Fut) Bool)
-""".trimIndent()
-val smtHeader = """
-    ; static header
-    (set-option :produce-models true)
-    (set-logic ALL)
-    (declare-fun valueOf_Int (Int) Int)
-    (declare-fun hasRole (Int String) Bool)
-    (define-sort ABS.StdLib.Int () Int)
-    (define-sort ABS.StdLib.Float () Real)
-    (define-sort ABS.StdLib.Bool () Bool)
-    (define-sort ABS.StdLib.String () String)
-    (declare-const Unit Int)
-    (assert (= Unit 0))
-    (declare-sort UNBOUND 0)
-    ${DefineSortSMT("Field", "Int").toSMT("\n")}
-    ; end static header
-    """.trimIndent()
+val mapBuiltinTypeSMT = mapOf(
+    "ABS.StdLib.Int" to "Int",
+    "ABS.StdLib.Float" to "Real",
+    "ABS.StdLib.Bool" to "Bool",
+    "ABS.StdLib.String" to "String",
+    "Field" to "Int"
+)
 
 @Suppress("UNCHECKED_CAST")
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
     resetWildCards()
+    val headerBlock =BlockProofElements(
+        listOf(
+            SolverOption("set-option :produce-models true"),
+            SolverOption("set-logic ALL"),
+            FunDecl("valueOf_Int", listOf("Int"), "Int"),
+            FunDecl("hasRole", listOf("Int", "String"), "Bool"),
+            bindToBuiltinSorts(mapBuiltinTypeSMT),
+            DeclareConstSMT("Unit", "Int"),
+            Assertion(Eq(Function("Unit"),Function("0"))),
+            DeclareSortSMT("UNBOUND"))
+                + getPrimitiveDecl(),
+        "; static header",
+        "; end static header")
 
     // application of update to generate pre and post condition
     var  pre = deupdatify(ante)
@@ -90,8 +88,6 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val negPostSMT = Not(post as Formula).toSMT()
     val functionDecl = FunctionRepos.toString()
     val concretizeFunctionTosSMT= concretizeFunctionTosSMT()
-    //generation of translation for primitive
-    val primitiveTypesDecl = ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.joinToString("\n\t") { "(declare-sort ${it.qualifiedName} 0)" }
     //generation of translation for wildcards
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
     //generation of translation for fields and variable declarations
@@ -138,15 +134,11 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val funcsDecl = funcs.joinToString("\n") { "(declare-const ${it.name} Int)"}
 
 
-    //generation of translation for fields contraints: each field has to be unique
 
     return """
 ;header
-    $smtHeader
-;primitive type declaration
-    $primitiveTypesDecl
-;valueOf
-    $valueOf
+${headerBlock.toSMT("\t")}
+
 ;data type declaration
     ${ADTRepos.dTypesToSMT()}
 
@@ -287,6 +279,7 @@ fun getFieldDecls(fields:Set<Field>):BlockProofElements{
     return  BlockProofElements(fields.map { FieldDecl(it.name, "ABS.StdLib.Int") }, "; fields declaration") //todo change type to Interface
 }
 
+//generation of translation for fields contraints: each field has to be unique
 fun getFieldsConstraints(fields:Set<Field>) : BlockProofElements{
     val fieldsConstraints1 = mutableListOf<ProofElement>()
     fields.forEach{
@@ -295,7 +288,14 @@ fun getFieldsConstraints(fields:Set<Field>) : BlockProofElements{
         }
     }
     return BlockProofElements(fieldsConstraints1, "; fields constraints")
-
-
 }
 
+fun bindToBuiltinSorts(map : Map<String,String>) : BlockProofElements{
+    return BlockProofElements(map.map { DefineSortSMT(it.key, it.value, listOf())}, "; builtin types")
+}
+
+//generation of translation for primitive
+fun getPrimitiveDecl():BlockProofElements{
+    val valueofs = listOf(FunDecl("valueOf_ABS_StdLib_Int", listOf("ABS.StdLib.Fut"), "Int"), FunDecl("valueOf_ABS_StdLib_Bool", listOf("ABS.StdLib.Fut"), "Bool"))
+    return BlockProofElements(ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.map{ DeclareSortSMT(it.qualifiedName)} + valueofs,"; primitive declaration")
+}
