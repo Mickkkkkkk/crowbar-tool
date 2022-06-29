@@ -42,17 +42,10 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     // application of update to generate pre and post condition
     var  pre = deupdatify(ante)
     var post = deupdatify(succ)
-
+    val globaliterate = globalIterate(pre,post)
 
     val fieldsProofBlock = getFieldsProofBlock(pre,post)
     // generation of the generics occurring in pre and post condition
-    ((pre.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) } + post.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) }) as Set<DataTypeConst>).map {
-        ADTRepos.addGeneric(it.concrType!! as DataTypeType) }
-
-    val vars =  ((pre.iterate { it is ProgVar } + post.iterate { it is ProgVar  }) as Set<ProgVar>).filter {
-        it.name != "heap" && it.name !in specialHeapKeywords}
-    val heaps =  ((pre.iterate { it is Function } + post.iterate{ it is Function }) as Set<Function>).filter { it.name.startsWith("NEW") }
-    val funcs =  ((pre.iterate { it is Function } + post.iterate { it is Function }) as Set<Function>).filter { it.name.startsWith("f_") }
 
     val prePlaceholders = pre.iterate { it is Placeholder } as Set<Placeholder>
     val postPlaceholders = post.iterate { it is Placeholder } as Set<Placeholder>
@@ -84,6 +77,14 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
             }
         }
     }
+
+    globaliterate["GENERICS"]!!.map {
+        ADTRepos.addGeneric((it as DataTypeConst).concrType!! as DataTypeType) }
+
+    val vars =  globaliterate["VARS"]!! as Set<ProgVar>
+    val heaps =  globaliterate["HEAPS"]!! as Set<Function>
+    val funcs =  globaliterate["FUNCS"]!! as Set<Function>
+
     val preSMT =  (pre as Formula).toSMT()
     val negPostSMT = Not(post as Formula).toSMT()
     val functionDecl = FunctionRepos.toString()
@@ -298,4 +299,22 @@ fun bindToBuiltinSorts(map : Map<String,String>) : BlockProofElements{
 fun getPrimitiveDecl():BlockProofElements{
     val valueofs = listOf(FunDecl("valueOf_ABS_StdLib_Int", listOf("ABS.StdLib.Fut"), "Int"), FunDecl("valueOf_ABS_StdLib_Bool", listOf("ABS.StdLib.Fut"), "Bool"))
     return BlockProofElements(ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.map{ DeclareSortSMT(it.qualifiedName)} + valueofs,"; primitive declaration")
+}
+
+fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Term>>{
+
+    val varsList = mutableSetOf<ProgVar>()
+    val heapsList = mutableSetOf<Function>()
+    val funcsList = mutableSetOf<Function>()
+    val genericsList = mutableSetOf<DataTypeConst>()
+    val elems = pre.iterate{it is DataTypeConst || it is ProgVar || it is Function } + post.iterate{it is DataTypeConst || it is ProgVar || it is Function }
+
+    elems.forEach{
+        if(it is DataTypeConst && isConcreteGeneric(it.concrType!!)) genericsList+=it
+        if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsList+=it
+        if(it is Function && it.name.startsWith("NEW")) heapsList+=it
+        if(it is Function && it.name.startsWith("f_")) funcsList+=it
+    }
+
+    return mapOf("VARS" to varsList,"HEAPS" to heapsList,"FUNCS" to funcsList, "GENERICS" to genericsList)
 }
