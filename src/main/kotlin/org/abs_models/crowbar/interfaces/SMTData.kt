@@ -221,9 +221,28 @@ data class DefineSortSMT(val name :String, val type: String, val params :List<St
     }
 }
 
-data class DeclareConstSMT(val name :String, val type: String): ProofElement {
+open class DeclareConstSMT(val name :String, val type: String): ProofElement {
     override fun toSMT(indent:String): String {
         return "$indent(declare-const $name $type)"
+    }
+}
+
+class VarDecl(name :String, type: String) : DeclareConstSMT(name,type)
+
+class FieldDecl(name :String, type: String) : DeclareConstSMT(name,type)
+
+data class BlockProofElements(val proofElement: List<ProofElement>, val nameBlock: String) :ProofElement{
+    override fun toSMT(indent: String): String {
+        var block = "$indent$nameBlock\n"
+        block+=proofElement.joinToString("\n") { it.toSMT(indent) }
+        return "$block\n"
+    }
+
+}
+
+data class Assertion(val logicElement: LogicElement) :ProofElement{
+    override fun toSMT(indent: String): String {
+        return "(assert ${logicElement.toSMT(indent)})"
     }
 }
 

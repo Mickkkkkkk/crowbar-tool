@@ -4,6 +4,7 @@ import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Function
 import org.abs_models.crowbar.main.*
 import org.abs_models.crowbar.main.ADTRepos.libPrefix
+import org.abs_models.crowbar.main.ADTRepos.model
 import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
@@ -45,11 +46,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     var post = deupdatify(succ)
 
 
-    // storing information about used heap for concise proofs
-    val fields =  (pre.iterate { it is Field } + post.iterate { it is Field }) as Set<Field>
-    setUsedHeaps(fields.map{libPrefix(it.concrType.qualifiedName)}.toSet())
-
-
+    val fieldsProofBlock = getFieldsProofBlock(pre,post)
     // generation of the generics occurring in pre and post condition
     ((pre.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) } + post.iterate { it is DataTypeConst && isConcreteGeneric(it.concrType!!) }) as Set<DataTypeConst>).map {
         ADTRepos.addGeneric(it.concrType!! as DataTypeType) }
@@ -89,7 +86,6 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
             }
         }
     }
-
     val preSMT =  (pre as Formula).toSMT()
     val negPostSMT = Not(post as Formula).toSMT()
     val functionDecl = FunctionRepos.toString()
@@ -99,10 +95,6 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     //generation of translation for wildcards
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
     //generation of translation for fields and variable declarations
-    val fieldsDecl = fields.joinToString("\n\t"){ "(declare-const ${it.name} Field)\n" +
-            if(it.concrType.isInterfaceType)
-                "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
-            else ""}
     val varsDecl = (vars.union(globPlaceholders).union(allPhs)).joinToString("\n\t"){"(declare-const ${it.name} ${
         translateType(it.concrType)}) ; ${it}\n" +
         if(it.concrType.isInterfaceType)
@@ -147,8 +139,6 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
 
     //generation of translation for fields contraints: each field has to be unique
-    var fieldsConstraints = ""
-    fields.forEach { f1 -> fields.minus(f1).forEach{ f2 -> if(libPrefix(f1.concrType.qualifiedName) == libPrefix(f2.concrType.qualifiedName)) fieldsConstraints += "(assert (not ${Eq(f1,f2).toSMT()}))" } } //??
 
     return """
 ;header
@@ -186,8 +176,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     $functionDecl
 ;generic functions declaration :to be implemented and added
 ;    
-;fields declaration
-    $fieldsDecl
+${fieldsProofBlock.toSMT("\t")}
 ;variables declaration
     $varsDecl
 ;objects declaration
@@ -197,8 +186,6 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     $objectImpl
 ;funcs declaration
     $funcsDecl
-;fields constraints
-    $fieldsConstraints
     ; Precondition
     (assert $preSMT )
     ; Negated postcondition
@@ -286,3 +273,29 @@ fun translateType(type:Type) : String{
     else
         libPrefix(type.qualifiedName)
 }
+
+
+fun getFieldsProofBlock(pre:LogicElement,post:LogicElement):BlockProofElements{
+    val fields =  (pre.iterate { it is Field } + post.iterate { it is Field }) as Set<Field>
+    return BlockProofElements(listOf(getFieldDecls(fields), getFieldsConstraints(fields)), "; FIELDS")
+}
+
+
+
+fun getFieldDecls(fields:Set<Field>):BlockProofElements{
+    setUsedHeaps(fields.map{libPrefix(it.concrType.qualifiedName)}.toSet())
+    return  BlockProofElements(fields.map { FieldDecl(it.name, "ABS.StdLib.Int") }, "; fields declaration") //todo change type to Interface
+}
+
+fun getFieldsConstraints(fields:Set<Field>) : BlockProofElements{
+    val fieldsConstraints1 = mutableListOf<ProofElement>()
+    fields.forEach{
+        f1 -> fields.minus(f1).forEach{
+            f2 -> if(f1.concrType.qualifiedName == f2.concrType.qualifiedName)fieldsConstraints1+=Assertion(Not(Eq(f1,f2)))
+        }
+    }
+    return BlockProofElements(fieldsConstraints1, "; fields constraints")
+
+
+}
+
