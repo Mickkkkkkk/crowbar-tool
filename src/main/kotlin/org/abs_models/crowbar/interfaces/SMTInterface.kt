@@ -39,45 +39,19 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
         "; static header",
         "; end static header")
 
-    // application of update to generate pre and post condition
+    // application of updates to generate pre- and post-condition
     var  pre = deupdatify(ante)
     var post = deupdatify(succ)
+
     val globaliterate = globalIterate(pre,post)
 
-    val fieldsProofBlock = getFieldsProofBlock(pre,post)
+    val fieldsProofBlock = getFieldsProofBlock(globaliterate["FIELDS"] as Set<Field>)
+
+    val newContract = replacePredicateContainingPlaceholders(pre, post, globaliterate)
+    pre = newContract.first
+    post = newContract.second
+
     // generation of the generics occurring in pre and post condition
-
-    val prePlaceholders = pre.iterate { it is Placeholder } as Set<Placeholder>
-    val postPlaceholders = post.iterate { it is Placeholder } as Set<Placeholder>
-    val allPhs = prePlaceholders.union(postPlaceholders)
-    val placeholders = prePlaceholders.intersect(postPlaceholders)
-    val globPlaceholders = prePlaceholders.union(postPlaceholders).map {  ProgVar("${it.name}_${it.concrType}", it.concrType)}
-
-
-    // replacing placeholders in precondition
-    (pre.iterate { it is Predicate }.toList() as List<Predicate>).map {
-        oldPredicate ->
-        var newFormula= (oldPredicate.iterate { el -> el is Placeholder && el in placeholders } as Set<Placeholder>).fold(oldPredicate) {
-                acc:Formula, ph : Placeholder->
-            And(acc, Predicate("=", listOf(ph, ProgVar("${ph.name}_${ph.concrType}", ph.concrType))))
-        }
-        val wildcards = oldPredicate.iterate { it is WildCardVar || it is Placeholder } as Set<ProgVar>
-         newFormula= Exists(wildcards.toList(), newFormula)
-        pre = replaceInFormula(pre as Formula, oldPredicate, newFormula)
-    }
-
-    // replacing placeholders in precondition
-    post.iterate { it is Predicate }.map {
-            oldPredicate ->
-        if(placeholders.isNotEmpty()) {
-            postPlaceholders.map {
-                val globalPh= ProgVar("${it.name}_${it.concrType}", it.concrType)
-                val newFormula = replaceInLogicElement(oldPredicate as Predicate, mapOf(Pair(it, globalPh))) as Predicate
-                post = replaceInFormula(post as Formula, oldPredicate, newFormula)
-            }
-        }
-    }
-
     globaliterate["GENERICS"]!!.map {
         ADTRepos.addGeneric((it as DataTypeConst).concrType!! as DataTypeType) }
 
@@ -89,10 +63,11 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val negPostSMT = Not(post as Formula).toSMT()
     val functionDecl = FunctionRepos.toString()
     val concretizeFunctionTosSMT= concretizeFunctionTosSMT()
+
     //generation of translation for wildcards
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
     //generation of translation for fields and variable declarations
-    val varsDecl = (vars.union(globPlaceholders).union(allPhs)).joinToString("\n\t"){"(declare-const ${it.name} ${
+    val varsDecl = (vars).joinToString("\n\t"){"(declare-const ${it.name} ${
         translateType(it.concrType)}) ; ${it}\n" +
         if(it.concrType.isInterfaceType)
             "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
@@ -268,8 +243,7 @@ fun translateType(type:Type) : String{
 }
 
 
-fun getFieldsProofBlock(pre:LogicElement,post:LogicElement):BlockProofElements{
-    val fields =  (pre.iterate { it is Field } + post.iterate { it is Field }) as Set<Field>
+fun getFieldsProofBlock(fields:Set<Field>):BlockProofElements{
     return BlockProofElements(listOf(getFieldDecls(fields), getFieldsConstraints(fields)), "; FIELDS")
 }
 
@@ -301,20 +275,91 @@ fun getPrimitiveDecl():BlockProofElements{
     return BlockProofElements(ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.map{ DeclareSortSMT(it.qualifiedName)} + valueofs,"; primitive declaration")
 }
 
-fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Term>>{
+fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Anything>>{
 
-    val varsList = mutableSetOf<ProgVar>()
-    val heapsList = mutableSetOf<Function>()
-    val funcsList = mutableSetOf<Function>()
-    val genericsList = mutableSetOf<DataTypeConst>()
-    val elems = pre.iterate{it is DataTypeConst || it is ProgVar || it is Function } + post.iterate{it is DataTypeConst || it is ProgVar || it is Function }
+    val varsSet = mutableSetOf<ProgVar>()
+    val heapsSet = mutableSetOf<Function>()
+    val funcsSet = mutableSetOf<Function>()
+    val genericsSet = mutableSetOf<DataTypeConst>()
+    val predicatePre = mutableSetOf<Predicate>()
+    val predicatePost = mutableSetOf<Predicate>()
+    val elemsPre = pre.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
+    val elemsPost = post.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
+    val placeholdersPre = mutableSetOf<Placeholder>()
+    val placeholdersPost = mutableSetOf<Placeholder>()
 
-    elems.forEach{
-        if(it is DataTypeConst && isConcreteGeneric(it.concrType!!)) genericsList+=it
-        if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsList+=it
-        if(it is Function && it.name.startsWith("NEW")) heapsList+=it
-        if(it is Function && it.name.startsWith("f_")) funcsList+=it
+    val fieldsSet =  mutableSetOf<Field>()
+
+    elemsPre.forEach{
+        if(it is DataTypeConst && isConcreteGeneric(it.concrType!!)) genericsSet+=it
+        if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsSet+=it
+        if(it is Function && it.name.startsWith("NEW")) heapsSet+=it
+        if(it is Function && it.name.startsWith("f_")) funcsSet+=it
+        if(it is Predicate) predicatePre+=it
+        if(it is Placeholder) {
+            placeholdersPre += it
+            varsSet+=ProgVar("${it.name}_${it.concrType}", it.concrType)
+        }
+        if(it is Field) fieldsSet+=it
     }
 
-    return mapOf("VARS" to varsList,"HEAPS" to heapsList,"FUNCS" to funcsList, "GENERICS" to genericsList)
+    elemsPost.forEach{
+        if(it is DataTypeConst && isConcreteGeneric(it.concrType!!)) genericsSet+=it
+        if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsSet+=it
+        if(it is Function && it.name.startsWith("NEW")) heapsSet+=it
+        if(it is Function && it.name.startsWith("f_")) funcsSet+=it
+        if(it is Predicate) predicatePost+=it
+        if(it is Placeholder) {
+            placeholdersPost += it
+            varsSet+=ProgVar("${it.name}_${it.concrType}", it.concrType)
+        }
+        if(it is Field) fieldsSet+=it
+    }
+
+    return mapOf(
+        "VARS" to varsSet,
+        "HEAPS" to heapsSet,
+        "FUNCS" to funcsSet,
+        "GENERICS" to genericsSet,
+        "PREDICATES_PRE" to predicatePre,
+        "PREDICATES_POST" to predicatePost,
+        "PLACEHOLDERS_PRE" to placeholdersPre,
+        "PLACEHOLDERS_POST" to placeholdersPost,
+        "FIELDS" to fieldsSet
+    )
+}
+
+fun replacePredicateContainingPlaceholders(pre: LogicElement, post: LogicElement, globalIterate:Map<String, Set<Anything>>): Pair<LogicElement, LogicElement> {
+    var newPre = pre
+    var newPost = post
+    val predicatePre = globalIterate["PREDICATES_PRE"] as Set<Predicate>
+    val predicatePost = globalIterate["PREDICATES_POST"] as Set<Predicate>
+    val prePlaceholders = globalIterate["PLACEHOLDERS_PRE"] as Set<Placeholder>
+    val postPlaceholders = globalIterate["PLACEHOLDERS_POST"] as Set<Placeholder>
+    val placeholders = prePlaceholders.intersect(postPlaceholders)
+
+    // replacing placeholders in precondition
+    predicatePre.map {
+            oldPredicate ->
+        var newFormula= (oldPredicate.iterate { el -> el is Placeholder && el in placeholders } as Set<Placeholder>).fold(oldPredicate) {
+                acc:Formula, ph : Placeholder->
+            And(acc, Predicate("=", listOf(ph, ProgVar("${ph.name}_${ph.concrType}", ph.concrType))))
+        }
+        val wildcards = oldPredicate.iterate { it is WildCardVar || it is Placeholder } as Set<ProgVar>
+            newFormula = Exists(wildcards.toList(), newFormula)
+            newPre = replaceInFormula(newPre as Formula, oldPredicate, newFormula)
+    }
+
+    // replacing placeholders in postcondition
+    predicatePost.map {
+            oldPredicate ->
+        if(postPlaceholders.isNotEmpty()) {
+            postPlaceholders.map {
+                val globalPh= ProgVar("${it.name}_${it.concrType}", it.concrType)
+                val newFormula = replaceInLogicElement(oldPredicate as Predicate, mapOf(Pair(it, globalPh))) as Predicate
+                newPost = replaceInFormula(newPost as Formula, oldPredicate, newFormula)
+            }
+        }
+    }
+    return Pair(newPre,newPost)
 }

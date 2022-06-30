@@ -222,13 +222,8 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                         placeholderToBeReplaced =  branchTerm.branch.iterate { it is Placeholder } as Set<Placeholder>
                         val mapPlaceholderToFunctions = placeholderToBeReplaced.associate {
                             Pair(it,
-                            getFunctionForDataTypeConstElem(branchTerm.matchTerm, it).
-                            foldRight(match) { functionName: String, function: Term ->
-                                Function(
-                                    functionName,
-                                    listOf(function)
-                                )
-                            })
+                                listNamesToFunction(match,
+                            getFunctionForDataTypeConstElem(branchTerm.matchTerm, it)))
                         }
 
                         if(mapPlaceholderToFunctions.isNotEmpty())
@@ -342,6 +337,11 @@ open class Quantifier(val name:String, val elems:List<ProgVar>, val formula:Form
     override fun toSMT(indent: String): String {
         return  if(elems.isEmpty()) formula.toSMT()
         else "($name (${elems.joinToString(" ") { "(${it.name} ${translateType(it.concrType)})" }}) ${formula.toSMT()})"
+    }
+    override fun iterate(f: (Anything) -> Boolean) : Set<Anything> = elems.fold(super.iterate(f)) { acc, nx ->
+        acc + nx.iterate(
+            f
+        ) + formula.iterate(f)
     }
 }
 
@@ -687,4 +687,14 @@ fun getFunctionForDataTypeConstElem(dataTypeConst: DataTypeConst, elem : Term) :
     }
     return listOf()
 
+}
+
+
+fun listNamesToFunction(term:Term, functionNames:List<String>): Function{
+    return functionNames.foldRight(term) { functionName: String, function: Term ->
+        Function(
+            functionName,
+            listOf(function)
+        )
+    } as Function
 }
