@@ -251,11 +251,12 @@ class VarDecl(name :String, type: String) : DeclareConstSMT(name,type)
 
 class FieldDecl(name :String, type: String) : DeclareConstSMT(name,type)
 
-data class BlockProofElements(val proofElement: List<ProofElement>, val header: String, val footer:String="") :ProofElement{
+open class BlockProofElements(val proofElement: List<ProofElement>, val header: String, val footer:String="") :ProofElement{
     override fun toSMT(indent: String): String {
-        var block = "$indent$header\n"
+        val comment = ";"
+        var block = "$indent$comment$header\n"
         block+=proofElement.joinToString("$indent\n") { it.toSMT(indent) }
-        return "$block${if(footer.isNotBlank()) "\n$indent$footer" else ""}"
+        return "$block${if(footer.isNotBlank()) "\n$indent$comment$footer" else ""}"
     }
 
 }
@@ -265,6 +266,9 @@ data class Assertion(val logicElement: LogicElement) :ProofElement{
         return "$indent(assert ${logicElement.toSMT(indent)})"
     }
 }
+
+class ProofObligation(pre:Assertion, post:Assertion):BlockProofElements(listOf(pre, BlockProofElements(listOf(post), "Negated Postcondition")),"Precondition")
+
 
 // Crowbar uses type-agnostic heaps internally that can store any data type
 // For SMT translation, we have to use separate heaps for different types

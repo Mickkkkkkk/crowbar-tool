@@ -25,19 +25,7 @@ val mapBuiltinTypeSMT = mapOf(
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
     resetWildCards()
-    val headerBlock =BlockProofElements(
-        listOf(
-            SolverOption("set-option :produce-models true"),
-            SolverOption("set-logic ALL"),
-            FunDecl("valueOf_Int", listOf("Int"), "Int"),
-            FunDecl("hasRole", listOf("Int", "String"), "Bool"),
-            bindToBuiltinSorts(mapBuiltinTypeSMT),
-            DeclareConstSMT("Unit", "Int"),
-            Assertion(Eq(Function("Unit"),Function("0"))),
-            DeclareSortSMT("UNBOUND"))
-                + getPrimitiveDecl(),
-        "; static header",
-        "; end static header")
+    val headerBlock = getStaticHeader()
 
     // application of updates to generate pre- and post-condition
     var  pre = deupdatify(ante)
@@ -59,8 +47,8 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val heaps =  globaliterate["HEAPS"]!! as Set<Function>
     val funcs =  globaliterate["FUNCS"]!! as Set<Function>
 
-    val preSMT =  (pre as Formula).toSMT()
-    val negPostSMT = Not(post as Formula).toSMT()
+    val proofObligation = ProofObligation(Assertion(pre as Formula), Assertion(Not(post as Formula)))
+    val proofObligationSMT =  proofObligation.toSMT("\t")
     val functionDecl = FunctionRepos.toString()
     val concretizeFunctionTosSMT= concretizeFunctionTosSMT()
 
@@ -107,7 +95,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     }
 
     //generation of translation for function declaration
-    val funcsDecl = funcs.joinToString("\n") { "(declare-const ${it.name} Int)"}
+    val funcsDecl = "" //funcs.joinToString("\n") { "(declare-const ${it.name} Int)"}
 
 
 
@@ -154,10 +142,7 @@ ${fieldsProofBlock.toSMT("\t")}
     $objectImpl
 ;funcs declaration
     $funcsDecl
-    ; Precondition
-    (assert $preSMT )
-    ; Negated postcondition
-    (assert $negPostSMT) 
+$proofObligationSMT
     (check-sat)
     $modelCmd
     (exit)
@@ -244,14 +229,14 @@ fun translateType(type:Type) : String{
 
 
 fun getFieldsProofBlock(fields:Set<Field>):BlockProofElements{
-    return BlockProofElements(listOf(getFieldDecls(fields), getFieldsConstraints(fields)), "; FIELDS")
+    return BlockProofElements(listOf(getFieldDecls(fields), getFieldsConstraints(fields)), "FIELDS BLOCK","END FIELDS")
 }
 
 
 
 fun getFieldDecls(fields:Set<Field>):BlockProofElements{
     setUsedHeaps(fields.map{libPrefix(it.concrType.qualifiedName)}.toSet())
-    return  BlockProofElements(fields.map { FieldDecl(it.name, "ABS.StdLib.Int") }, "; fields declaration") //todo change type to Interface
+    return  BlockProofElements(fields.map { FieldDecl(it.name, "ABS.StdLib.Int") }, "Fields Declaration") //todo change type to Interface
 }
 
 //generation of translation for fields contraints: each field has to be unique
@@ -262,17 +247,17 @@ fun getFieldsConstraints(fields:Set<Field>) : BlockProofElements{
             f2 -> if(f1.concrType.qualifiedName == f2.concrType.qualifiedName)fieldsConstraints1+=Assertion(Not(Eq(f1,f2)))
         }
     }
-    return BlockProofElements(fieldsConstraints1, "; fields constraints")
+    return BlockProofElements(fieldsConstraints1, "Fields Constraints")
 }
 
 fun bindToBuiltinSorts(map : Map<String,String>) : BlockProofElements{
-    return BlockProofElements(map.map { DefineSortSMT(it.key, it.value, listOf())}, "; builtin types")
+    return BlockProofElements(map.map { DefineSortSMT(it.key, it.value, listOf())}, "Builtin Types")
 }
 
 //generation of translation for primitive
 fun getPrimitiveDecl():BlockProofElements{
     val valueofs = listOf(FunDecl("valueOf_ABS_StdLib_Int", listOf("ABS.StdLib.Fut"), "Int"), FunDecl("valueOf_ABS_StdLib_Bool", listOf("ABS.StdLib.Fut"), "Bool"))
-    return BlockProofElements(ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.map{ DeclareSortSMT(it.qualifiedName)} + valueofs,"; primitive declaration")
+    return BlockProofElements(ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.map{ DeclareSortSMT(it.qualifiedName)} + valueofs,"Primitive Declaration")
 }
 
 fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Anything>>{
@@ -283,18 +268,18 @@ fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Anythi
     val genericsSet = mutableSetOf<DataTypeConst>()
     val predicatePre = mutableSetOf<Predicate>()
     val predicatePost = mutableSetOf<Predicate>()
-    val elemsPre = pre.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
-    val elemsPost = post.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
     val placeholdersPre = mutableSetOf<Placeholder>()
     val placeholdersPost = mutableSetOf<Placeholder>()
-
     val fieldsSet =  mutableSetOf<Field>()
+
+    val elemsPre = pre.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
+    val elemsPost = post.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
 
     elemsPre.forEach{
         if(it is DataTypeConst && isConcreteGeneric(it.concrType!!)) genericsSet+=it
         if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsSet+=it
         if(it is Function && it.name.startsWith("NEW")) heapsSet+=it
-        if(it is Function && it.name.startsWith("f_")) funcsSet+=it
+        else if(it is Function ) funcsSet+=it
         if(it is Predicate) predicatePre+=it
         if(it is Placeholder) {
             placeholdersPre += it
@@ -307,7 +292,7 @@ fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Anythi
         if(it is DataTypeConst && isConcreteGeneric(it.concrType!!)) genericsSet+=it
         if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsSet+=it
         if(it is Function && it.name.startsWith("NEW")) heapsSet+=it
-        if(it is Function && it.name.startsWith("f_")) funcsSet+=it
+        else if(it is Function ) funcsSet+=it
         if(it is Predicate) predicatePost+=it
         if(it is Placeholder) {
             placeholdersPost += it
@@ -362,4 +347,20 @@ fun replacePredicateContainingPlaceholders(pre: LogicElement, post: LogicElement
         }
     }
     return Pair(newPre,newPost)
+}
+
+fun getStaticHeader():BlockProofElements{
+    return BlockProofElements(
+        listOf(
+            SolverOption("set-option :produce-models true"),
+            SolverOption("set-logic ALL"),
+            FunDecl("valueOf_Int", listOf("Int"), "Int"),
+            FunDecl("hasRole", listOf("Int", "String"), "Bool"),
+            bindToBuiltinSorts(mapBuiltinTypeSMT),
+            DeclareConstSMT("Unit", "Int"),
+            Assertion(Eq(Function("Unit"),Function("0"))),
+            DeclareSortSMT("UNBOUND"))
+                + getPrimitiveDecl(),
+        "Static Header",
+        "End Static Header")
 }
