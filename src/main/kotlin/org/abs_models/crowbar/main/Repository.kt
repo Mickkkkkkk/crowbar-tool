@@ -20,7 +20,7 @@ object ADTRepos {
 
 	var model:Model? = null
 
-	private val dtypeMap: MutableMap<String, HeapDecl> = mutableMapOf()
+	val dtypeMap: MutableMap<String, HeapDecl> = mutableMapOf()
 	val dTypesDecl = mutableSetOf<DataTypeDecl>()
 	val primitiveDtypesDecl = mutableListOf<DataTypeDecl>()
 	val exceptionDecl = mutableListOf<ExceptionDecl>()
@@ -32,7 +32,7 @@ object ADTRepos {
 
 	private val concreteGenerics :MutableMap<String, DataTypeType> = mutableMapOf()
 	val parametricGenerics :MutableMap<String, List<TypeParameter>> = mutableMapOf()
-	private val usedHeaps = mutableSetOf<String>()
+	val usedHeaps = mutableSetOf<String>()
 
 	//These are either handled manually as special cases (e.g., float, Exception)
 	private val ignorableBuiltInDataTypes : Set<String> = setOf(
@@ -138,30 +138,9 @@ object ADTRepos {
 			""
 	}
 
-	fun heapsToSMT() :String{
-		var header = ""
-		for (dtype in dtypeMap) {
 
-			header +=
-				if(!conciseProofs || dtype.key in usedHeaps)
-					dtype.value.toSMT()
-				else
-					"\n; no fields of type ${dtype.key}: omitting declaration of ${dtype.value.heapType}"
 
-		}
-		return header
-	}
 
-	fun interfaceExtendsToSMT() : String {
-		var res = ""
-		interfaceDecl.forEach { i1 ->
-			i1.extendedInterfaceUseListNoTransform.forEach { i2 ->
-
-				res += "(assert (extends ${i1.type.qualifiedName} ${i2.type.qualifiedName}))\n\t"
-			}
-		}
-		return res
-	}
 
 	fun dTypesToSMT() :String{
 		return DataTypesDecl(dTypesDecl.toList(), exceptionDecl,interfaceDecl).toSMT()

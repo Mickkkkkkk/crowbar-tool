@@ -76,12 +76,12 @@ ${headerBlock.toSMT("\t")}
      (=> (and (extends i1 i2) (implements object i1))
       (implements object i2))))
       
-      ${ADTRepos.interfaceExtendsToSMT()}
+      ${interfaceExtends().toSMT("\t")}
       
 ;generics declaration
     ${ADTRepos.genericsToSMT()}
 ;heaps declaration
-    ${ADTRepos.heapsToSMT()}
+    ${getHeapsDeclaration().toSMT("\t")}
 ;wildcards declaration
     $wildcards
     
@@ -343,4 +343,27 @@ fun getStaticHeader():BlockProofElements{
                 + getPrimitiveDecl(),
         "Header",
         "End Header")
+}
+
+fun interfaceExtends() : BlockProofElements {
+    val assertions = mutableListOf<Assertion>()
+    ADTRepos.interfaceDecl.forEach { i1 ->
+        i1.extendedInterfaceUseListNoTransform.forEach { i2 ->
+            assertions+=ExtendsAssertion(i1.type as InterfaceType, i2.type as InterfaceType)
+        }
+    }
+    return BlockProofElements(assertions, "Interface Extensions Assertions")
+}
+
+fun getHeapsDeclaration() :BlockProofElements{
+    val heaps = mutableListOf<BlockProofElements>()
+    for (dtype in ADTRepos.dtypeMap) {
+        heaps +=
+            if(!conciseProofs || dtype.key in ADTRepos.usedHeaps)
+                BlockProofElements(listOf(dtype.value), "Heap declaration for type ${dtype.key}")
+            else
+                EmptyProofBlock("\n; no fields of type ${dtype.key}: omitting declaration of ${dtype.value.heapType}")
+
+    }
+    return BlockProofElements(heaps, "HEAPS DECLARATION", "END HEAPS DECLARATION")
 }

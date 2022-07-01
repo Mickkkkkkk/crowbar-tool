@@ -8,6 +8,7 @@ import org.abs_models.frontend.ast.DataTypeDecl
 import org.abs_models.frontend.ast.ExceptionDecl
 import org.abs_models.frontend.ast.InterfaceDecl
 import org.abs_models.frontend.typechecker.DataTypeType
+import org.abs_models.frontend.typechecker.InterfaceType
 import org.abs_models.frontend.typechecker.Type
 
 /*
@@ -267,14 +268,17 @@ open class BlockProofElements(val proofElement: List<ProofElement>, val header: 
         block+=proofElement.joinToString("$indent\n") { it.toSMT(indent) }
         return "$block${if(footer.isNotBlank()) "\n$indent$comment$footer" else ""}"
     }
-
 }
+
+class EmptyProofBlock(val reason:String) : BlockProofElements(listOf(), reason)
 
 open class Assertion(val logicElement: LogicElement) :ProofElement{
     override fun toSMT(indent: String): String {
         return "$indent(assert ${logicElement.toSMT(indent)})"
     }
 }
+
+data class ExtendsAssertion(val type1: InterfaceType, val type2:InterfaceType) : Assertion(Predicate("extends", listOf(ProofType(type1), ProofType(type2))))
 
 data class ImplementAssertion(val term: Term, val type:Type) : Assertion(Predicate("implements", listOf(term,
     ProofType(type))))
