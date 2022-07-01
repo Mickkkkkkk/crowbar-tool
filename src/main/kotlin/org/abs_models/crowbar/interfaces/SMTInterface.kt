@@ -7,10 +7,8 @@ import org.abs_models.crowbar.main.ADTRepos.libPrefix
 import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
-import org.abs_models.crowbar.types.booleanFunction
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.InterfaceType
-import org.abs_models.frontend.typechecker.ReferenceType
 import org.abs_models.frontend.typechecker.Type
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -46,7 +44,6 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     globaliterate["GENERICS"]!!.map {
         ADTRepos.addGeneric((it as DataTypeConst).concrType!! as DataTypeType) }
 
-    val vars =  globaliterate["VARS"]!! as Set<ProgVar>
     val heaps =  globaliterate["HEAPS"]!! as Set<Function>
     val funcs =  globaliterate["FUNCS"]!! as Set<Function>
 
@@ -60,35 +57,8 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
 
     //generation of translation for object "implements" assertions
-    val objectImpl = heaps.joinToString("\n"){
-        x:Function ->
-        if(x.name in objects)
-            objects[x.name]!!.types.joinToString("\n\t") {
-                "(assert (implements " +
-                        if(x.params.isNotEmpty()){
-                        "(${x.name} " +
-                        x.params.joinToString (" "){term -> term.toSMT()} +
-                        ")  ${it.qualifiedName}))"}
-                    else{
-                        "${x.name} ${it.qualifiedName}))"
-                        }
+    val objectImpl = getObjectsDecls(heaps).toSMT()
 
-        }else ""
-
-    }
-    //generation of translation for object declaration
-    val objectsDecl = heaps.joinToString("\n\t"){"(declare-fun ${it.name} (${it.params.joinToString (" "){
-        term ->
-        if(term is DataTypeConst) {
-            ADTRepos.addGeneric(term.concrType!! as DataTypeType)
-            genericTypeSMTName(term.concrType)
-        }
-        else if(term is Function && term.name in booleanFunction) "Bool"
-        else { "Int"
-        }
-    }}) Int)"
-
-    }
     return """
 ${headerBlock.toSMT("\t")}
 
@@ -123,11 +93,7 @@ ${headerBlock.toSMT("\t")}
 ;    
 ${fieldsProofBlock.toSMT("\t")}
 ${varsProofBlock.toSMT("\t")}
-;objects declaration
-    $objectsDecl
-    
-;objects interface declaration
-    $objectImpl
+$objectImpl
 
 $proofObligationSMT
     (check-sat)
@@ -225,7 +191,7 @@ fun getVarsProofBlock(vars:Set<ProgVar>) : BlockProofElements{
     vars.forEach {
         decls+=VarDecl(it.name, translateType(it.concrType))
         if(it.concrType is InterfaceType)
-            implementsAssertions+=ImplementAssertion(it)
+            implementsAssertions+=ImplementAssertion(it,it.concrType)
     }
     return BlockProofElements(decls + BlockProofElements(implementsAssertions, "Implement Assertions"), "Variable Declaration", "End Variable Declaration")
 }
@@ -245,6 +211,23 @@ fun getFieldsConstraints(fields:Set<Field>) : BlockProofElements{
         }
     }
     return BlockProofElements(fieldsConstraints1, "Fields Constraints")
+}
+
+fun getObjectsDecls(objectsSet:Set<Function>):BlockProofElements{
+    val objectDecls = mutableListOf<ObjectDecl>()
+    val objectImplAssertion = mutableListOf<ImplementAssertion>()
+
+    objectsSet.forEach {
+        objectDecls+=ObjectDecl(it)
+        if(it.name in objects )
+            objects[it.name]!!.types.forEach{ type -> objectImplAssertion+=ImplementAssertion(it,type) }
+    }
+
+    return  BlockProofElements( listOf(
+        BlockProofElements(objectDecls, "Object Declarations")) +
+        BlockProofElements(objectImplAssertion, "Interface Implementation Assertions"),
+        "OBJECTS",
+        "END OBJECTS") //todo change type to Interface
 }
 
 fun bindToBuiltinSorts(map : Map<String,String>) : BlockProofElements{

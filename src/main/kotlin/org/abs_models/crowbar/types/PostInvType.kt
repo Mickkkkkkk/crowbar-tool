@@ -892,6 +892,8 @@ fun getReturnType(term: Term) : Type {
         return term.concrType!!
     }
     else if (term is Function) {
+        if(term.name.startsWith("NEW"))
+            return ADTRepos.model!!.intType
         if(term.name in setOf( "contains","emptyMap"))
             return ADTRepos.model!!.boolType
         if(term.name in setOf("ABS.StdLib.Cons_0","ABS.StdLib.Insert_0", "fst","fstT","head", "appendright","concatenate"))

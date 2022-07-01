@@ -3,6 +3,7 @@ package org.abs_models.crowbar.interfaces
 import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Function
 import org.abs_models.crowbar.main.ADTRepos
+import org.abs_models.crowbar.types.getReturnType
 import org.abs_models.frontend.ast.DataTypeDecl
 import org.abs_models.frontend.ast.ExceptionDecl
 import org.abs_models.frontend.ast.InterfaceDecl
@@ -233,7 +234,7 @@ open class DeclareConstSMT(val name :String, val type: String): ProofElement {
     }
 }
 
-class FunDecl(val name:String,val typeParams:List<String>, val type:String):ProofElement{
+open class FunDecl(val name:String,val typeParams:List<String>, val type:String):ProofElement{
     override fun toSMT(indent: String): String {
         return "$indent(declare-fun $name (${typeParams.joinToString(" ")}) $type)"
     }
@@ -247,9 +248,17 @@ class SolverOption(val option:String):ProofElement{
 
 }
 
+class HeapElem(function:Function) : Term {
+    override fun toSMT(indent: String): String {
+        TODO("Not yet implemented")
+    }
+}
+
 class VarDecl(name :String, type: String) : DeclareConstSMT(name,type)
 
 class FieldDecl(name :String, type: String) : DeclareConstSMT(name,type)
+
+class ObjectDecl(obj :Function) : FunDecl(obj.name,obj.params.map { translateType(getReturnType(it)) }, "Int")
 
 open class BlockProofElements(val proofElement: List<ProofElement>, val header: String, val footer:String="") :ProofElement{
     override fun toSMT(indent: String): String {
@@ -267,7 +276,8 @@ open class Assertion(val logicElement: LogicElement) :ProofElement{
     }
 }
 
-data class ImplementAssertion(val progVar: ProgVar) : Assertion(Predicate("implements", listOf(progVar,ProofType(progVar.concrType))))
+data class ImplementAssertion(val term: Term, val type:Type) : Assertion(Predicate("implements", listOf(term,
+    ProofType(type))))
 
 data class ProofType(val type: Type) : Term {
     override fun toSMT(indent: String): String {
