@@ -9,6 +9,8 @@ import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
 import org.abs_models.crowbar.types.booleanFunction
 import org.abs_models.frontend.typechecker.DataTypeType
+import org.abs_models.frontend.typechecker.InterfaceType
+import org.abs_models.frontend.typechecker.ReferenceType
 import org.abs_models.frontend.typechecker.Type
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -34,6 +36,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val globaliterate = globalIterate(pre,post)
 
     val fieldsProofBlock = getFieldsProofBlock(globaliterate["FIELDS"] as Set<Field>)
+    val varsProofBlock = getVarsProofBlock(globaliterate["VARS"] as Set<ProgVar>)
 
     val newContract = replacePredicateContainingPlaceholders(pre, post, globaliterate)
     pre = newContract.first
@@ -54,13 +57,6 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
     //generation of translation for wildcards
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
-    //generation of translation for fields and variable declarations
-    val varsDecl = (vars).joinToString("\n\t"){"(declare-const ${it.name} ${
-        translateType(it.concrType)}) ; ${it}\n" +
-        if(it.concrType.isInterfaceType)
-            "(assert (implements ${it.name} ${it.concrType.qualifiedName}))\n\t"
-        else ""
-    }
 
 
     //generation of translation for object "implements" assertions
@@ -93,14 +89,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     }}) Int)"
 
     }
-
-    //generation of translation for function declaration
-    val funcsDecl = "" //funcs.joinToString("\n") { "(declare-const ${it.name} Int)"}
-
-
-
     return """
-;header
 ${headerBlock.toSMT("\t")}
 
 ;data type declaration
@@ -133,15 +122,13 @@ ${headerBlock.toSMT("\t")}
 ;generic functions declaration :to be implemented and added
 ;    
 ${fieldsProofBlock.toSMT("\t")}
-;variables declaration
-    $varsDecl
+${varsProofBlock.toSMT("\t")}
 ;objects declaration
     $objectsDecl
     
 ;objects interface declaration
     $objectImpl
-;funcs declaration
-    $funcsDecl
+
 $proofObligationSMT
     (check-sat)
     $modelCmd
@@ -231,7 +218,17 @@ fun translateType(type:Type) : String{
 fun getFieldsProofBlock(fields:Set<Field>):BlockProofElements{
     return BlockProofElements(listOf(getFieldDecls(fields), getFieldsConstraints(fields)), "FIELDS BLOCK","END FIELDS")
 }
-
+//generation of translation for variable declarations
+fun getVarsProofBlock(vars:Set<ProgVar>) : BlockProofElements{
+    val decls = mutableListOf<VarDecl>()
+    val implementsAssertions = mutableListOf<Assertion>()
+    vars.forEach {
+        decls+=VarDecl(it.name, translateType(it.concrType))
+        if(it.concrType is InterfaceType)
+            implementsAssertions+=ImplementAssertion(it)
+    }
+    return BlockProofElements(decls + BlockProofElements(implementsAssertions, "Implement Assertions"), "Variable Declaration", "End Variable Declaration")
+}
 
 
 fun getFieldDecls(fields:Set<Field>):BlockProofElements{
@@ -361,6 +358,6 @@ fun getStaticHeader():BlockProofElements{
             Assertion(Eq(Function("Unit"),Function("0"))),
             DeclareSortSMT("UNBOUND"))
                 + getPrimitiveDecl(),
-        "Static Header",
-        "End Static Header")
+        "Header",
+        "End Header")
 }

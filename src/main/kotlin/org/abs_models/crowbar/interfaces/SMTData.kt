@@ -261,9 +261,17 @@ open class BlockProofElements(val proofElement: List<ProofElement>, val header: 
 
 }
 
-data class Assertion(val logicElement: LogicElement) :ProofElement{
+open class Assertion(val logicElement: LogicElement) :ProofElement{
     override fun toSMT(indent: String): String {
         return "$indent(assert ${logicElement.toSMT(indent)})"
+    }
+}
+
+data class ImplementAssertion(val progVar: ProgVar) : Assertion(Predicate("implements", listOf(progVar,ProofType(progVar.concrType))))
+
+data class ProofType(val type: Type) : Term {
+    override fun toSMT(indent: String): String {
+        return type.qualifiedName
     }
 }
 
