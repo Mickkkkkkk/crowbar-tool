@@ -14,6 +14,12 @@ import org.abs_models.frontend.typechecker.Type
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+
+val headerOptions = listOf(
+    SolverOption("set-option :produce-models true"),
+    SolverOption("set-logic ALL")
+)
+
 val mapBuiltinTypeSMT = mapOf(
     "ABS.StdLib.Int" to "Int",
     "ABS.StdLib.Float" to "Real",
@@ -376,11 +382,9 @@ fun replacePredicateContainingPlaceholders(pre: LogicElement, post: LogicElement
 fun getStaticHeader():BlockProofElements{
     return BlockProofElements(
         listOf(
-            SolverOption("set-option :produce-models true"),
-            SolverOption("set-logic ALL"),
+            BlockProofElements(headerOptions,"SOLVER OPTIONS"),
             bindToBuiltinSorts(),
             builtinFunctions(),
-            DeclareConstSMT("Interface", "Int"),
             DeclareConstSMT("Unit", "Int"),
             DeclareSortSMT("UNBOUND"))
                 + staticAssertions.map { Assertion(it) }
