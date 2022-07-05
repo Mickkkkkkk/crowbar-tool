@@ -292,7 +292,7 @@ fun ClassDecl.executeAllREPORT(repos: Repository, usedType: KClass<out DeductTyp
                 output("Crowbar  : Verification ${m.methodSig.name}: $closed")
                 totalClosed = totalClosed && closed
 
-                csv += "OK;\n"
+                csv += "OK;NONE\n"
             } catch (e: Exception) {
                 val sw = StringWriter()
                 (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
@@ -309,7 +309,7 @@ fun ClassDecl.executeAllREPORT(repos: Repository, usedType: KClass<out DeductTyp
         val sw = StringWriter()
         (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
         val cause = sw.toString()
-        val csv = "${this.fileName};${this.name};;M_ERR;${cause.split("\n")[0]}\n"
+        val csv = "${this.fileName};${this.name};NONE;M_ERR;${cause.split("\n")[0]}\n"
         File("${reportPath}").appendText(csv)
         output("Crowbar  : Verification of initialNode failed due to exception")
         return false
