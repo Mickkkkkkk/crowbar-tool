@@ -18,7 +18,8 @@ val mapBuiltinTypeSMT = mapOf(
     "ABS.StdLib.Float" to "Real",
     "ABS.StdLib.Bool" to "Bool",
     "ABS.StdLib.String" to "String",
-    "Field" to "Int"
+    "Field" to "Int",
+    "Interface" to "Int"
 )
 
 @Suppress("UNCHECKED_CAST")
@@ -337,6 +338,7 @@ fun getStaticHeader():BlockProofElements{
             FunDecl("valueOf_Int", listOf("Int"), "Int"),
             FunDecl("hasRole", listOf("Int", "String"), "Bool"),
             bindToBuiltinSorts(mapBuiltinTypeSMT),
+            DeclareConstSMT("Interface", "Int"),
             DeclareConstSMT("Unit", "Int"),
             Assertion(Eq(Function("Unit"),Function("0"))),
             DeclareSortSMT("UNBOUND"))

@@ -151,13 +151,8 @@ data class DataTypesDecl(val dTypesDecl: List<DataTypeDecl>, val exceptionDecl: 
             dTypeValsDecl.add(ArgSMT(dTypeValDecl))
 
 
-            dTypeDecl.add(ArgsSMT("Interface", listOf(Function("0"))))
-            val dTypeValDecl1 = mutableListOf<Term>()
-            for(ex in interfaceDecl){
-                val v = ArgsSMT(ex.qualifiedName, listOf())
-                dTypeValDecl1.add(v)
-            }
-            dTypeValsDecl.add(ArgSMT(dTypeValDecl1))
+//            dTypeDecl.add(ArgsSMT("Interface", listOf(Function("0"))))
+            val interfacesBlock = BlockProofElements(interfaceDecl.map { DeclareConstSMT(it.qualifiedName, "Interface") },"Interfaces")
 
             //normal data types
             for (dType in dTypesDecl) {
@@ -187,7 +182,7 @@ data class DataTypesDecl(val dTypesDecl: List<DataTypeDecl>, val exceptionDecl: 
                         ))
             )
 
-            return "; DataTypes declaration\n${decl.toSMT()}\n$valueOfs"
+            return "; DataTypes declaration\n${decl.toSMT()}\n$valueOfs\n" + interfacesBlock.toSMT("\n")
         }
         return ""
     }
