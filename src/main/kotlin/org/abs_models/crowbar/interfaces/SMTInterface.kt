@@ -249,8 +249,8 @@ fun getVarsProofBlock(vars:Set<ProgVar>) : BlockProofElements{
 
 
 fun getFieldDecls(fields:Set<Field>):BlockProofElements{
-    setUsedHeaps(fields.map{libPrefix(it.concrType.qualifiedName)}.toSet())
-    return  BlockProofElements(fields.map { FieldDecl(it.name, "ABS.StdLib.Int") }, "Fields Declaration") //todo change type to Interface
+    setUsedHeaps(fields.map{translateType(it.concrType)}.toSet())
+    return  BlockProofElements(fields.map { FieldDecl(it.name, "Field") }, "Fields Declaration")
 }
 
 //generation of translation for fields contraints: each field has to be unique
