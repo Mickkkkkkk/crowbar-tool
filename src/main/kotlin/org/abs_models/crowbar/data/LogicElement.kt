@@ -333,6 +333,9 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
 class Exists(elems:List<ProgVar>, formula:Formula): Quantifier("exists", elems,formula){
 }
 
+class Forall(elems:List<ProgVar>, formula:Formula): Quantifier("forall", elems,formula){
+}
+
 open class Quantifier(val name:String, val elems:List<ProgVar>, val formula:Formula) : Formula{
     override fun toSMT(indent: String): String {
         return  if(elems.isEmpty()) formula.toSMT()

@@ -4,6 +4,7 @@ import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Function
 import org.abs_models.crowbar.main.*
 import org.abs_models.crowbar.main.ADTRepos.libPrefix
+import org.abs_models.crowbar.main.ADTRepos.model
 import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
@@ -22,9 +23,56 @@ val mapBuiltinTypeSMT = mapOf(
     "Interface" to "Int"
 )
 
+val mapBuiltinFunction = mapOf(
+    "valueOf_Int" to Pair(listOf("Int"), "Int"),
+    "hasRole" to Pair(listOf("Int", "String"), "Bool"),
+    "implements" to Pair(listOf("ABS.StdLib.Int", "Interface"), "Bool"),
+    "extends" to Pair(listOf("Interface", "Interface"), "Bool")
+)
+
+val staticAssertions = listOf(
+    Eq(Function("Unit"),Function("0")),
+    extendsProperty(),
+    implementsProperty()
+)
+
+
+fun extendsProperty() :LogicElement{
+    val i1 = ProgVar("i1", model!!.intType)
+    val i2 = ProgVar("i2", model!!.intType)
+    val i3 = ProgVar("i3", model!!.intType)
+    val property = "extends"
+    return Forall(
+        listOf(i1,i2,i3),
+        Impl(
+            And(
+                Predicate(property, listOf(i1,i2)),
+                Predicate(property, listOf(i2,i3))
+            ),
+            Predicate(property, listOf(i1,i3))
+        )
+    )
+}
+
+fun implementsProperty() :LogicElement{
+    val i1 = ProgVar("i1", model!!.intType)
+    val i2 = ProgVar("i2", model!!.intType)
+    val obj = ProgVar("obj", model!!.intType)
+    return Forall(
+        listOf(i1,i2,obj),
+        Impl(
+            And(
+                Predicate("extends", listOf(i1,i2)),
+                Predicate("implements", listOf(obj,i1))
+            ),
+            Predicate("implements", listOf(obj,i2))
+        )
+    )
+}
+
 @Suppress("UNCHECKED_CAST")
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
-
+//    val a = Type("")
     resetWildCards()
     val headerBlock = getStaticHeader()
 
@@ -67,16 +115,6 @@ ${headerBlock.toSMT("\t")}
     ${ADTRepos.dTypesToSMT()}
 
 ;interface type declaration
-    (declare-fun   implements (ABS.StdLib.Int Interface) Bool)
-    (declare-fun   extends (Interface Interface) Bool)
-    (assert (forall ((i1 Interface) (i2 Interface) (i3 Interface))
-     (=> (and (extends i1 i2) (extends i2 i3))
-      (extends i1 i3))))
-      
-    (assert (forall ((i1 Interface) (i2 Interface) (object ABS.StdLib.Int))
-     (=> (and (extends i1 i2) (implements object i1))
-      (implements object i2))))
-      
       ${interfaceExtends().toSMT("\t")}
       
 ;generics declaration
@@ -231,8 +269,12 @@ fun getObjectsDecls(objectsSet:Set<Function>):BlockProofElements{
         "END OBJECTS") //todo change type to Interface
 }
 
-fun bindToBuiltinSorts(map : Map<String,String>) : BlockProofElements{
-    return BlockProofElements(map.map { DefineSortSMT(it.key, it.value, listOf())}, "Builtin Types")
+fun bindToBuiltinSorts(): BlockProofElements{
+    return BlockProofElements(mapBuiltinTypeSMT.map { DefineSortSMT(it.key, it.value, listOf())}, "Builtin Types")
+}
+
+fun builtinFunctions(): BlockProofElements{
+    return BlockProofElements(mapBuiltinFunction.map { FunDecl(it.key, it.value.first, it.value.second)}, "Builtin Functions")
 }
 
 //generation of translation for primitive
@@ -312,7 +354,8 @@ fun replacePredicateContainingPlaceholders(pre: LogicElement, post: LogicElement
             And(acc, Predicate("=", listOf(ph, ProgVar("${ph.name}_${ph.concrType}", ph.concrType))))
         }
         val wildcards = oldPredicate.iterate { it is WildCardVar || it is Placeholder } as Set<ProgVar>
-            newFormula = Exists(wildcards.toList(), newFormula)
+            newFormula =
+                Exists(wildcards.toList(), newFormula)
             newPre = replaceInFormula(newPre as Formula, oldPredicate, newFormula)
     }
 
@@ -335,13 +378,12 @@ fun getStaticHeader():BlockProofElements{
         listOf(
             SolverOption("set-option :produce-models true"),
             SolverOption("set-logic ALL"),
-            FunDecl("valueOf_Int", listOf("Int"), "Int"),
-            FunDecl("hasRole", listOf("Int", "String"), "Bool"),
-            bindToBuiltinSorts(mapBuiltinTypeSMT),
+            bindToBuiltinSorts(),
+            builtinFunctions(),
             DeclareConstSMT("Interface", "Int"),
             DeclareConstSMT("Unit", "Int"),
-            Assertion(Eq(Function("Unit"),Function("0"))),
             DeclareSortSMT("UNBOUND"))
+                + staticAssertions.map { Assertion(it) }
                 + getPrimitiveDecl(),
         "Header",
         "End Header")
@@ -365,7 +407,6 @@ fun getHeapsDeclaration() :BlockProofElements{
                 BlockProofElements(listOf(dtype.value), "Heap declaration for type ${dtype.key}")
             else
                 EmptyProofBlock("\n; no fields of type ${dtype.key}: omitting declaration of ${dtype.value.heapType}")
-
     }
     return BlockProofElements(heaps, "HEAPS DECLARATION", "END HEAPS DECLARATION")
 }
