@@ -66,7 +66,7 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
                                 listOf(
                                     Function(
                                         if (concreteMap[it.type]!!.qualifiedName != "Unbound Type") {
-                                            genericTypeSMTName(concreteMap[it.type]!!)
+                                            translateType(concreteMap[it.type]!!, true)
                                         } else "UNBOUND"
                                     )
                                 )
@@ -153,7 +153,6 @@ data class DataTypesDecl(val dTypesDecl: List<DataTypeDecl>, val exceptionDecl: 
 
 //            dTypeDecl.add(ArgsSMT("Interface", listOf(Function("0"))))
             val interfacesBlock = BlockProofElements(interfaceDecl.map { DeclareConstSMT(it.qualifiedName, "Interface") },"Interfaces")
-
             //normal data types
             for (dType in dTypesDecl) {
                 valueOfs += "(declare-fun   valueOf_${dType.qualifiedName.replace(".","_")} (ABS.StdLib.Fut) ${dType.qualifiedName})\n"
@@ -166,7 +165,7 @@ data class DataTypesDecl(val dTypesDecl: List<DataTypeDecl>, val exceptionDecl: 
                             dataConstructor.constructorArgList.map {
                                 ArgsSMT(
                                     "${dataConstructor.qualifiedName}_${count++}",
-                                    listOf(Function(ADTRepos.libPrefix(it.type.qualifiedName)))
+                                    listOf(Function(translateType(it.type, true)))
                                 )
                             })
                     )
@@ -182,7 +181,7 @@ data class DataTypesDecl(val dTypesDecl: List<DataTypeDecl>, val exceptionDecl: 
                         ))
             )
 
-            return "; DataTypes declaration\n${decl.toSMT()}\n$valueOfs\n" + interfacesBlock.toSMT("\n")
+            return "; DataTypes declaration\n${decl.toSMT()}\n$valueOfs\n" + interfacesBlock.toSMT("\t")
         }
         return ""
     }

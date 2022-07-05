@@ -121,7 +121,6 @@ object ADTRepos {
 		val names = mutableSetOf<ArgsSMT>()
 		val decls = mutableSetOf<ArgSMT>()
 		val valueOf = mutableSetOf<FunctionDeclSMT>()
-
 		concreteGenerics.values.map{
 			val map = (it.decl.type as DataTypeType).typeArgs.zip(it.typeArgs).toMap()
 			val list = GenericTypeDecl(it.decl, map, it.typeArgs).getDecl()
@@ -170,7 +169,7 @@ object ADTRepos {
 			for(decl in moduleDecl.decls){
 				if(!moduleDecl.name.startsWith("ABS.StdLib.Exceptions") && decl is DataTypeDecl && decl.name != "Spec" && decl.qualifiedName !in ignorableBuiltInDataTypes){
 					if(!isBuildInType(decl.type)) {
-						if (decl.hasDataConstructor())
+						if (decl.hasDataConstructor() && (decl !is ParametricDataTypeDecl || !decl.hasTypeParameter()))
 							dTypesDecl.add(decl)
 						else
 							primitiveDtypesDecl.add(decl)

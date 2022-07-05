@@ -213,14 +213,20 @@ fun resetWildCards() {
     /*
     * Function that translates an ABS type into the SMT representation
     */
-fun translateType(type:Type) : String{
+fun translateType(type:Type, asReturnType :Boolean=false) : String{
     return if(type.isUnknownType)
         throw Exception("Unknown Type Cannot be Translated")
     else if (isGeneric(type)) {
         ADTRepos.addGeneric(type as DataTypeType)
         genericTypeSMTName(type)
-    }else if(type.isTypeParameter)
+    }else if(type.isTypeParameter) {
+        println()
         throw Exception("Parameter Type Cannot Be Translated")
+    }
+    else if(type.isInterfaceType && asReturnType)
+        "Interface"
+    else if(type.isReferenceType && asReturnType)
+        "Object"
     else
         libPrefix(type.qualifiedName)
 }
@@ -234,7 +240,7 @@ fun getVarsProofBlock(vars:Set<ProgVar>) : BlockProofElements{
     val decls = mutableListOf<VarDecl>()
     val implementsAssertions = mutableListOf<Assertion>()
     vars.forEach {
-        decls+=VarDecl(it.name, translateType(it.concrType))
+        decls+=VarDecl(it.name, translateType(it.concrType, true))
         if(it.concrType is InterfaceType)
             implementsAssertions+=ImplementAssertion(it,it.concrType)
     }
