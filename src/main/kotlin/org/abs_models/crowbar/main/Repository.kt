@@ -204,7 +204,7 @@ object FunctionRepos{
 		"emptyMap", "lookup" //map
 	)
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
-	val genericFunctions = mutableMapOf<String,Triple<DataTypeType, List<Type>, Function>>()
+	val genericFunctions = mutableMapOf<String,Pair<DataTypeType, List<Type>>>()
 	val parametricFunctions = mutableMapOf<String,FunctionDecl>()
 	val concreteParametricNameSMT = mutableMapOf<Pair<String,List<Type>>,String>()
 	val parametricFunctionTypeMap = mutableMapOf<Pair<String,List<Type>>,Map<TypeParameter,Type>>()
@@ -233,14 +233,19 @@ object FunctionRepos{
 		if(contracts.isNotEmpty()) {
 			var smt = ""
 		    for (pair in contracts) {
-
+				val name = pair.key
+				val type = pair.value.type
+				val params = pair.value.params
 				if(pair.value is ParametricFunctionDecl)
 					throw Exception("Parametric functions are not supported, please flatten your model")
 
-				val funpre = extractSpec(pair.value, "Requires", pair.value.type)
-				val funpost = extractSpec(pair.value, "Ensures", pair.value.type)
+				val funpre = extractSpec(pair.value, "Requires", type)
+				val funpost = extractSpec(pair.value, "Ensures", type)
 
-				smt+="${ContractFunDecl(pair.key, pair.value,funpre,funpost).toSMT("\t")}\n"
+				if(isGeneric(type) && !isConcreteGeneric(type)){
+					genericFunctions[name] = Pair((type as DataTypeType), params.map{ it.type })
+				}
+				smt+="${ContractFunDecl(name, pair.value,funpre,funpost).toSMT("\t")}\n"
 		    }
 		    ret += smt
 	    }

@@ -51,7 +51,6 @@ data class ContractFunDecl(val name:String, val functionDecl: FunctionDecl, val 
         val type = functionDecl.type
         val returnVar = ReturnVar(type)
         val params = functionDecl.params
-        val paramTypes = params.map{ it.type }
 
         val newPost = replaceInLogicElement(post, mapOf( returnVar to Function(name,params.map { Function(it.name) }))) as Formula
 
@@ -60,10 +59,6 @@ data class ContractFunDecl(val name:String, val functionDecl: FunctionDecl, val 
         val contract = Impl(pre, newPost)
         val assertion = Assertion(Forall(progvars, contract))
 
-        if(isGeneric(functionDecl.type) && !isConcreteGeneric(functionDecl.type)){
-            FunctionRepos.genericFunctions[name] = Triple((functionDecl.type as DataTypeType), paramTypes,
-                Function(contract.toSMT(), params.map{Function(it.name)} ))
-        }
         return "$indent${decl.toSMT(indent)}\n$indent${assertion.toSMT(indent)}"
     }
 }
