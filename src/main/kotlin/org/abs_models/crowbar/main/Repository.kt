@@ -233,12 +233,12 @@ object FunctionRepos{
 		if(contracts.isNotEmpty()) {
 			var smt = ""
 		    for (pair in contracts) {
-				val name = pair.key
-				val type = pair.value.type
-				val params = pair.value.params
 				if(pair.value is ParametricFunctionDecl)
 					throw Exception("Parametric functions are not supported, please flatten your model")
 
+				val name = functionNameSMT(pair.value)
+				val type = pair.value.type
+				val params = pair.value.params
 				val funpre = extractSpec(pair.value, "Requires", type)
 				val funpost = extractSpec(pair.value, "Ensures", type)
 
@@ -250,23 +250,17 @@ object FunctionRepos{
 		    ret += smt
 	    }
 		    if(direct.isNotEmpty()) {
-			    var sigs = ""
-			    var defs = ""
+				val directFunDecls = mutableListOf<DirectFunDecl>()
 			    for (pair in direct) {
-					val def =  pair.value.functionDef.getChild(0) as PureExp
-					val term =exprToTerm(translateExpression(def, def.type, emptyMap(),true).first)
 					if(pair.value !is ParametricFunctionDecl){
-						val params = pair.value.params
-						sigs += "\t(${functionNameSMT(pair.value)} (${
-							params.fold("") { acc, nx ->
-								"$acc (${nx.name} ${translateType(nx.type)})"
-							}
-						})  ${translateType(def.type)})\n"
-						defs += "\t${term.toSMT()}\n"
+						val name = functionNameSMT(pair.value)
+						val def =  pair.value.functionDef.getChild(0) as PureExp
+						val term =exprToTerm(translateExpression(def, def.type, emptyMap(),true).first)
+						directFunDecls.add(DirectFunDecl(name, pair.value, term ))
 					}
 			    }
-				if(sigs.isNotBlank())
-					ret += "\n(define-funs-rec(\n$sigs)(\n$defs))"
+				if(directFunDecls.isNotEmpty())
+					ret+="\n"+DirectFunDecls(directFunDecls).toSMT()
 		    }
 	    return ret
     }

@@ -40,14 +40,13 @@ data class HeapDecl(val dtype: String) : ProofElement {
     }
 }
 
-data class ContractFunDecl(val name:String, val functionDecl: FunctionDecl, val pre: Formula,val post: Formula) :ProofElement{
+data class ContractFunDecl(val name :String, val functionDecl: FunctionDecl, val pre: Formula,val post: Formula) :ProofElement{
     override fun toSMT(indent: String): String {
 
         //todo: apply map substitution with concrete types
 
         if(functionDecl is ParametricFunctionDecl)
             throw Exception("Parametric functions are not supported, please flatten your model")
-        val name = FunctionRepos.functionNameSMT(functionDecl)
         val type = functionDecl.type
         val returnVar = ReturnVar(type)
         val params = functionDecl.params
@@ -61,6 +60,32 @@ data class ContractFunDecl(val name:String, val functionDecl: FunctionDecl, val 
 
         return "$indent${decl.toSMT(indent)}\n$indent${assertion.toSMT(indent)}"
     }
+}
+
+
+data class DirectFunDecls(val directFunDecls : List<DirectFunDecl>) : ProofElement{
+    override fun toSMT(indent: String): String {
+        var sigs=""
+        var defs=""
+        directFunDecls.forEach {
+            sigs+=it.getSign()
+            defs+=it.getDef()+"\n"
+        }
+
+        return "\n(define-funs-rec(\n$sigs)(\n$defs))"
+    }
+
+}
+
+data class DirectFunDecl(val name :String, val functionDecl: FunctionDecl, val term:Term){
+
+    fun getSign():String =
+        "\t($name (${functionDecl.params.fold("") { acc, nx ->
+                "$acc (${nx.name} ${translateType(nx.type)})"
+            }})  ${translateType(functionDecl.type)})\n"
+
+
+    fun getDef():String = term.toSMT("\t")
 }
 
 data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<Type, Type>, val concreteTypes : List<Type>):
