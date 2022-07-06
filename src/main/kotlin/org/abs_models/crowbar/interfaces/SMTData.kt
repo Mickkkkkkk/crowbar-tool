@@ -3,10 +3,9 @@ package org.abs_models.crowbar.interfaces
 import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Function
 import org.abs_models.crowbar.main.ADTRepos
+import org.abs_models.crowbar.main.FunctionRepos
 import org.abs_models.crowbar.types.getReturnType
-import org.abs_models.frontend.ast.DataTypeDecl
-import org.abs_models.frontend.ast.ExceptionDecl
-import org.abs_models.frontend.ast.InterfaceDecl
+import org.abs_models.frontend.ast.*
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.InterfaceType
 import org.abs_models.frontend.typechecker.Type
@@ -38,6 +37,34 @@ data class HeapDecl(val dtype: String) : ProofElement {
         ret += DeclareConstSMT(last, heapType).toSMT("\n")
         ret += FunctionDeclSMT(anon, heapType, listOf(heapType)).toSMT("\n")
         return ret
+    }
+}
+
+data class ContractFunDecl(val name:String, val functionDecl: FunctionDecl, val pre: Formula,val post: Formula) :ProofElement{
+    override fun toSMT(indent: String): String {
+
+        //todo: apply map substitution with concrete types
+
+        if(functionDecl is ParametricFunctionDecl)
+            throw Exception("Parametric functions are not supported, please flatten your model")
+        val name = FunctionRepos.functionNameSMT(functionDecl)
+        val type = functionDecl.type
+        val returnVar = ReturnVar(type.qualifiedName, type)
+        val params = functionDecl.params
+        val paramTypes = params.map{ it.type }
+
+        val newPost = replaceInLogicElement(post, mapOf( returnVar to Function(name,params.map { Function(it.name) }))) as Formula
+
+        val decl = FunctionDeclSMT(name, translateType(functionDecl.type, true),params.map{ translateType(it.type) })
+        val progvars = params.map { ProgVar(it.name,it.type) }
+        val contract = Impl(pre, newPost)
+        val assertion = Assertion(Forall(progvars, contract))
+
+        if(isGeneric(functionDecl.type) && !isConcreteGeneric(functionDecl.type)){
+            FunctionRepos.genericFunctions[name] = Triple((functionDecl.type as DataTypeType), paramTypes,
+                Function(contract.toSMT(), params.map{Function(it.name)} ))
+        }
+        return "$indent${decl.toSMT(indent)}\n$indent${assertion.toSMT(indent)}"
     }
 }
 

@@ -231,48 +231,18 @@ object FunctionRepos{
 	    var ret = ""
 
 		if(contracts.isNotEmpty()) {
-		    var sigs = ""
-		    var defs = ""
+			var smt = ""
 		    for (pair in contracts) {
 
 				if(pair.value is ParametricFunctionDecl)
 					throw Exception("Parametric functions are not supported, please flatten your model")
-			    val name = functionNameSMT(pair.value)
-			    val params = pair.value.params
-				val paramTypes = params.map{
-					it.type
-				}
 
-			    val zParams = params.joinToString(" ") { translateType(it.type) }
+				val funpre = extractSpec(pair.value, "Requires", pair.value.type)
+				val funpost = extractSpec(pair.value, "Ensures", pair.value.type)
 
-			    val nextsig =  "\n(declare-fun $name ($zParams) ${translateType(pair.value.type)})" //todo: use interface to get SMT declaration
-			    sigs += nextsig
-
-			    val callParams = params.joinToString(" ") { it.name }
-
-			    val funpre = extractSpec(pair.value, "Requires", pair.value.type)
-			    val funpost = extractSpec(pair.value, "Ensures", pair.value.type)
-
-				val paramsTyped = params.joinToString(" ") { "(${it.name} ${
-					translateType(it.type)
-				})" }
-				if(params.count() > 0) {
-					val transpost = funpost.toSMT().replace("result","($name $callParams)")
-					val nextDef = "\n(assert (forall ($paramsTyped) (=> ${funpre.toSMT()} $transpost)))"
-
-					if(isGeneric(pair.value.type) && !isConcreteGeneric(pair.value.type)){
-						genericFunctions[name] = Triple((pair.value.type as DataTypeType), paramTypes,
-							Function("(=> ${funpre.toSMT()} $transpost)", params.map{Function(it.name)} ))
-					}
-					defs += nextDef
-				}else{
-					val transpost = funpost.toSMT().replace("result","$name ")
-					val nextDef = "\n(assert  (=> ${funpre.toSMT()} $transpost))"
-					defs += nextDef
-				}
-
+				smt+="${ContractFunDecl(pair.key, pair.value,funpre,funpost).toSMT("\t")}\n"
 		    }
-		    ret += (sigs+defs)
+		    ret += smt
 	    }
 		    if(direct.isNotEmpty()) {
 			    var sigs = ""
