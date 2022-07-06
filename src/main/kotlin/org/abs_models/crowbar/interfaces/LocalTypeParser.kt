@@ -188,7 +188,7 @@ class LocalTypeFormulaConverter(context: Pair<Type, Map<String, Type>>) : LocalS
             text == "false"  -> Const("false")
             text == "True"   -> Const("true")
             text == "False"  -> Const("false")
-            text == "result" -> ReturnVar(methodReturnType.qualifiedName, methodReturnType)
+            text == "result" -> ReturnVar(methodReturnType)
             text matches Regex("[0-9]+") -> Const(text)
             dataTypeConstructors.containsKey(text) -> buildDataType(text)
             else -> ProgVar(text, UnknownType.INSTANCE)

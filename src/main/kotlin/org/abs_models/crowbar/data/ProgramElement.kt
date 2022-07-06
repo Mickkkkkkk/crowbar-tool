@@ -379,7 +379,7 @@ data class WildCardVar(override val name:String, override val concrType:Type) :P
         return super.hashCode()
     }
 }
-data class ReturnVar(val vParam : String, override val concrType: Type) : ProgVar("result", concrType){
+data class ReturnVar(override val concrType: Type) : ProgVar("result", concrType){
 
     override fun equals(other: Any?): Boolean {
         return super.equals(other)

@@ -49,7 +49,7 @@ data class ContractFunDecl(val name:String, val functionDecl: FunctionDecl, val 
             throw Exception("Parametric functions are not supported, please flatten your model")
         val name = FunctionRepos.functionNameSMT(functionDecl)
         val type = functionDecl.type
-        val returnVar = ReturnVar(type.qualifiedName, type)
+        val returnVar = ReturnVar(type)
         val params = functionDecl.params
         val paramTypes = params.map{ it.type }
 

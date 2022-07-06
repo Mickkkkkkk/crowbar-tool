@@ -174,7 +174,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             if (input.name == "result") {
                 if (returnType.isUnknownType)
                     throw Exception("result type cannot be <UNKNOWN>")
-                Pair(ReturnVar(returnType.qualifiedName,returnType), listOf())
+                Pair(ReturnVar(returnType), listOf())
             } else {
                 val type = applyBinding(input.type, map)
                 if (input.type.isFutureType) {

@@ -320,7 +320,7 @@ class PITSyncAssign(repos: Repository) : PITAssign(repos, Modality(
             if(got.iterate { it is ProgVar && it.name != "result"}.isNotEmpty())
                 got = True
             else
-                got = subst(got, mapOf(Pair(ReturnVar(myType.qualifiedName, myType), rhs))) as Formula
+                got = subst(got, mapOf(Pair(ReturnVar(myType), rhs))) as Formula
             cond = And(cond, apply(input.update, got) as Formula)
             zeros = zeros + ground
         }
@@ -441,7 +441,7 @@ class PITCallAssign(repos: Repository) : PITAssign(repos, Modality(
             substPostMap[pName] = pValue
         }
 
-        val updateNew = ElementaryUpdate(ReturnVar(targetDecl.type.qualifiedName, targetDecl.type),valueOfFunc(freshFut))
+        val updateNew = ElementaryUpdate(ReturnVar(targetDecl.type),valueOfFunc(freshFut))
 
         val next = symbolicNext(lhs,
                                             freshFut,
@@ -479,7 +479,7 @@ class PITSyncCallAssign(repos: Repository) : PITAssign(repos, Modality(
 
         val freshVar = FreshGenerator.getFreshProgVar(targetPreDecl.type)//ASK<<
 
-        val updateNew = ElementaryUpdate(ReturnVar(targetPreDecl.type.qualifiedName, targetPreDecl.type), freshVar)
+        val updateNew = ElementaryUpdate(ReturnVar(targetPreDecl.type), freshVar)
 
         val substPreMap = mapSubstPar(call, targetPreDecl)
         val precondSubst = subst(precond, substPreMap) as Formula
@@ -593,7 +593,7 @@ class PITReturn(val repos: Repository) : Rule(Modality(
         val res = LogicNode(
             input.condition,
             And(
-                    UpdateOnFormula(ChainUpdate(input.update, ElementaryUpdate(ReturnVar(typeReturn.qualifiedName,typeReturn), ret)), targetPost),
+                    UpdateOnFormula(ChainUpdate(input.update, ElementaryUpdate(ReturnVar(typeReturn), ret)), targetPost),
                     UpdateOnFormula(input.update, target)
             ),
             info = InfoReturn(retExpr, targetPost, target, input.update)

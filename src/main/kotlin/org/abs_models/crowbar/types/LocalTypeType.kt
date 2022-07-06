@@ -283,7 +283,7 @@ class LTTCallAssign(repos: Repository) : LTTAssign(repos, Modality(
             substPostMap[pName] = pValue
         }
         val substPostCond = subst(postCond, substPostMap) as Formula
-        val updateNew = ElementaryUpdate(ReturnVar(targetDecl.type.qualifiedName, targetDecl.type), valueOfFunc(freshFut))
+        val updateNew = ElementaryUpdate(ReturnVar(targetDecl.type), valueOfFunc(freshFut))
 
         val next = symbolicNext(lhs,
                                 freshFut,
@@ -374,7 +374,7 @@ object LTTReturn : Rule(Modality(
         }
 
         // Sidecondition handled in readTransform: specified postcondition must hold
-        val newUpdate = ChainUpdate(input.update, ElementaryUpdate(ReturnVar(typeReturn.qualifiedName, typeReturn), ret))
+        val newUpdate = ChainUpdate(input.update, ElementaryUpdate(ReturnVar(typeReturn), ret))
         val context = LTCommonContext(input.condition, newUpdate)
         val newTargetExp = ltexp.readTransform(LTPatternPut, context)
 
