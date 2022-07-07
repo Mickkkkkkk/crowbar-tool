@@ -40,6 +40,9 @@ data class HeapDecl(val dtype: String) : ProofElement {
     }
 }
 
+
+data class ContractFunDecls(val contractFuncDecls : List<ContractFunDecl>) :
+    BlockProofElements(contractFuncDecls, "Declaration of function with contract")
 data class ContractFunDecl(val name :String, val functionDecl: FunctionDecl, val pre: Formula,val post: Formula) :ProofElement{
     override fun toSMT(indent: String): String {
 
@@ -71,8 +74,10 @@ data class DirectFunDecls(val directFunDecls : List<DirectFunDecl>) : ProofEleme
             sigs+=it.getSign()
             defs+=it.getDef()+"\n"
         }
-
-        return "\n(define-funs-rec(\n$sigs)(\n$defs))"
+        if(sigs.isNotBlank())
+            return "\n(define-funs-rec(\n$sigs)(\n$defs))"
+        else
+            return ";NO FUNCTION USED"
     }
 
 }

@@ -225,45 +225,6 @@ object FunctionRepos{
 			}
 		}
 	}
-    override fun toString() : String {
-	    val contracts = contracts()
-	    val direct = known.filter { !hasContract(it.value) }
-	    var ret = ""
-
-		if(contracts.isNotEmpty()) {
-			var smt = ""
-		    for (pair in contracts) {
-				if(pair.value is ParametricFunctionDecl)
-					throw Exception("Parametric functions are not supported, please flatten your model")
-
-				val name = functionNameSMT(pair.value)
-				val type = pair.value.type
-				val params = pair.value.params
-				val funpre = extractSpec(pair.value, "Requires", type)
-				val funpost = extractSpec(pair.value, "Ensures", type)
-
-				if(isGeneric(type) && !isConcreteGeneric(type)){
-					genericFunctions[name] = Pair((type as DataTypeType), params.map{ it.type })
-				}
-				smt+="${ContractFunDecl(name, pair.value,funpre,funpost).toSMT("\t")}\n"
-		    }
-		    ret += smt
-	    }
-		    if(direct.isNotEmpty()) {
-				val directFunDecls = mutableListOf<DirectFunDecl>()
-			    for (pair in direct) {
-					if(pair.value !is ParametricFunctionDecl){
-						val name = functionNameSMT(pair.value)
-						val def =  pair.value.functionDef.getChild(0) as PureExp
-						val term =exprToTerm(translateExpression(def, def.type, emptyMap(),true).first)
-						directFunDecls.add(DirectFunDecl(name, pair.value, term ))
-					}
-			    }
-				if(directFunDecls.isNotEmpty())
-					ret+="\n"+DirectFunDecls(directFunDecls).toSMT()
-		    }
-	    return ret
-    }
 
 	private fun hasContract(fDecl: FunctionDecl) : Boolean {
 		return fDecl.annotationList.any { it.type.toString().endsWith(".Spec") }
@@ -386,6 +347,60 @@ object FunctionRepos{
 		val def = "\t${term.toSMT()}\n"
 
 		concreteFunctionsToSMT[Pair(name,paramTypes)] =  Pair(sig, def)
+	}
+
+	fun getCalledFunctionsNotInPO(functionsCalledInPO:Set<Function>) : Pair<ContractFunDecls,DirectFunDecls> {
+		val contractFunDeclsSet = mutableListOf<ContractFunDecl>()
+		val directFunDeclsSet = mutableListOf<DirectFunDecl>()
+
+		val contracts = contracts()
+		val direct = known.filter { !hasContract(it.value) }
+
+		if(contracts.isNotEmpty()) {
+			for (pair in contracts) {
+				if(pair.value is ParametricFunctionDecl)
+					throw Exception("Parametric functions are not supported, please flatten your model")
+
+				val name = functionNameSMT(pair.value)
+				val type = pair.value.type
+				val params = pair.value.params
+				val funpre = extractSpec(pair.value, "Requires", type)
+				val funpost = extractSpec(pair.value, "Ensures", type)
+
+				if(isGeneric(type) && !isConcreteGeneric(type)){
+					genericFunctions[name] = Pair((type as DataTypeType), params.map{ it.type })
+				}
+				contractFunDeclsSet.add(ContractFunDecl(name, pair.value,funpre,funpost))
+			}
+		}
+		if(direct.isNotEmpty()) {
+			directFunDeclsSet.addAll(getDirectFunDecls(functionsCalledInPO, direct, emptyMap()).values)
+		}
+
+		return Pair(ContractFunDecls(contractFunDeclsSet), DirectFunDecls(directFunDeclsSet))
+	}
+
+	fun getDirectFunDecls(functions:Set<Function>, direct:Map<String,FunctionDecl>, saved:Map<String, DirectFunDecl>): Map<String, DirectFunDecl>{
+		val directFunDecls = mutableMapOf<String, DirectFunDecl>()
+		val funs = setOf<String>()
+		val calledDirectFunctions = mutableSetOf<Function>()
+		if(functions.isEmpty())
+			return directFunDecls
+		for (function in functions) {
+			val name = function.name.replace("-",".") //todo: replace current workaround
+			if(name in direct && direct[name] !is ParametricFunctionDecl){
+				val functionDecl = direct[name] as FunctionDecl
+				val name = functionNameSMT(functionDecl)
+				val def =  functionDecl.functionDef.getChild(0) as PureExp
+				val term =exprToTerm(translateExpression(def, def.type, emptyMap(),true).first)
+				calledDirectFunctions += term.iterate { it is Function && it.name!=function.name && it.name.replace("-",".")  in direct && it.name.replace("-",".")  !in saved} as Set<Function>
+				directFunDecls[name] = DirectFunDecl(name, functionDecl, term )
+			}
+		}
+		if(calledDirectFunctions.isEmpty())
+			return directFunDecls
+		directFunDecls.putAll(getDirectFunDecls(calledDirectFunctions, direct, directFunDecls + saved))
+		return directFunDecls
 	}
 
 }

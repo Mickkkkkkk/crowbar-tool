@@ -45,7 +45,6 @@ val staticAssertions = listOf(
 
 @Suppress("UNCHECKED_CAST")
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
-//    val a = Type("")
     resetWildCards()
     val headerBlock = getStaticHeader()
 
@@ -70,9 +69,11 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val heaps =  globaliterate["HEAPS"]!! as Set<Function>
     val funcs =  globaliterate["FUNCS"]!! as Set<Function>
 
+    val allFunctionsDecls = FunctionRepos.getCalledFunctionsNotInPO(funcs)
+
     val proofObligation = ProofObligation(Assertion(pre as Formula), Assertion(Not(post as Formula)))
     val proofObligationSMT =  proofObligation.toSMT("\t")
-    val functionDecl = FunctionRepos.toString()
+    val functionDecl = BlockProofElements(listOf(allFunctionsDecls.first, allFunctionsDecls.second),"FUNCTIONS").toSMT("\t")
     val concretizeFunctionTosSMT= concretizeFunctionTosSMT()
 
     //generation of translation for wildcards
