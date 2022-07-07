@@ -82,6 +82,10 @@ fun isBoundGeneric(type : Type?) : Boolean = isGeneric(type) && !(type as DataTy
 
 data class DataTypeConst(val name : String, val concrType: Type?, val params : List<Term> = emptyList()) : Term {
 
+    val placeholders = this.iterate { it is Placeholder }
+    val wildcards = (this.iterate { it is WildCardVar } as Set<WildCardVar>).toList()
+    val containsPlaceholdersOrWildcards = placeholders.any() || wildcards.any()
+
     init{
         if( name == "ABS.StdLib.Cons" && params.size < 2)
             throw Exception("too few parameters")
@@ -136,6 +140,18 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
             }
         }
         return mapMatch
+    }
+
+    fun equalsSMT(term:Term):Formula{
+
+        val matchingFunctions = placeholdersToSMT().map {
+            Pair(it.key, it.value.foldRight(term){s: String, acc: Term -> Function(s,listOf(acc)) })
+        } + concreteParamsToSMT().map {
+                Pair(it.key, it.value.foldRight(term){s: String, acc: Term -> Function(s,listOf(acc)) })
+        }
+        return matchingFunctions.foldRight(Is(genericSMTName(name, concrType!!), term)){ pair: Pair<Term, Term>, acc: Formula ->
+            And(acc, Eq(pair.first,pair.second))
+        }
     }
 
 }
@@ -317,6 +333,10 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
             val boundTerms = boundTerms(params[0], params[1])
             val boundParam0 = boundTerms.first
             val boundParam1 = boundTerms.second
+
+            if(boundParam1 is DataTypeConst && boundParam1.containsPlaceholdersOrWildcards){
+                return Exists(boundParam1.wildcards, if(boundParam1.placeholders.any()) boundParam1.equalsSMT(boundParam0) else Eq(boundParam1, boundParam0)).toSMT(indent)
+            }
             listOf(boundParam0,boundParam1)
         } else params
         return getSMT(name, list.fold("") { acc, nx -> acc + " ${nx.toSMT()}" })

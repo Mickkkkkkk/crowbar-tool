@@ -8,6 +8,7 @@ import org.abs_models.crowbar.main.ADTRepos.model
 import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
+import org.abs_models.crowbar.rule.FreshGenerator
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.InterfaceType
 import org.abs_models.frontend.typechecker.Type
@@ -42,40 +43,6 @@ val staticAssertions = listOf(
     implementsProperty()
 )
 
-
-fun extendsProperty() :LogicElement{
-    val i1 = ProgVar("i1", model!!.intType)
-    val i2 = ProgVar("i2", model!!.intType)
-    val i3 = ProgVar("i3", model!!.intType)
-    val property = "extends"
-    return Forall(
-        listOf(i1,i2,i3),
-        Impl(
-            And(
-                Predicate(property, listOf(i1,i2)),
-                Predicate(property, listOf(i2,i3))
-            ),
-            Predicate(property, listOf(i1,i3))
-        )
-    )
-}
-
-fun implementsProperty() :LogicElement{
-    val i1 = ProgVar("i1", model!!.intType)
-    val i2 = ProgVar("i2", model!!.intType)
-    val obj = ProgVar("obj", model!!.intType)
-    return Forall(
-        listOf(i1,i2,obj),
-        Impl(
-            And(
-                Predicate("extends", listOf(i1,i2)),
-                Predicate("implements", listOf(obj,i1))
-            ),
-            Predicate("implements", listOf(obj,i2))
-        )
-    )
-}
-
 @Suppress("UNCHECKED_CAST")
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 //    val a = Type("")
@@ -84,16 +51,17 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
 
     // application of updates to generate pre- and post-condition
     var  pre = deupdatify(ante)
-    var post = deupdatify(succ)
+    val post = deupdatify(succ)
 
     val globaliterate = globalIterate(pre,post)
+    val unusedPlaceholders = globaliterate["UNUSED_PLACEHOLDERS"] as Set<Placeholder>
+    val pairNewPreAndWildcards = replaceUnusedPlaceholdersWithWildcards(pre,unusedPlaceholders)
+    pre = pairNewPreAndWildcards.first
+    globaliterate["VARS"] = (globaliterate["VARS"] as Set<ProgVar>).plus(pairNewPreAndWildcards.second)
+    globaliterate["VARS"] = (globaliterate["VARS"] as Set<ProgVar>).minus(unusedPlaceholders)
 
     val fieldsProofBlock = getFieldsProofBlock(globaliterate["FIELDS"] as Set<Field>)
     val varsProofBlock = getVarsProofBlock(globaliterate["VARS"] as Set<ProgVar>)
-
-    val newContract = replacePredicateContainingPlaceholders(pre, post, globaliterate)
-    pre = newContract.first
-    post = newContract.second
 
     // generation of the generics occurring in pre and post condition
     globaliterate["GENERICS"]!!.map {
@@ -295,31 +263,26 @@ fun getPrimitiveDecl():BlockProofElements{
     return BlockProofElements(ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.map{ DeclareSortSMT(it.qualifiedName)} + valueofs,"Primitive Declaration")
 }
 
-fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Anything>>{
+fun globalIterate(pre: LogicElement,post: LogicElement) : MutableMap<String, Set<Anything>>{
 
     val varsSet = mutableSetOf<ProgVar>()
     val heapsSet = mutableSetOf<Function>()
     val funcsSet = mutableSetOf<Function>()
     val genericsSet = mutableSetOf<DataTypeConst>()
-    val predicatePre = mutableSetOf<Predicate>()
-    val predicatePost = mutableSetOf<Predicate>()
     val placeholdersPre = mutableSetOf<Placeholder>()
     val placeholdersPost = mutableSetOf<Placeholder>()
     val fieldsSet =  mutableSetOf<Field>()
 
-    val elemsPre = pre.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
-    val elemsPost = post.iterate{it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field}
+    val cond = { it:Anything -> it is DataTypeConst || it is ProgVar || it is Function || it is Predicate || it is Field }
+    val elemsPre = pre.iterate{cond(it)}
+    val elemsPost = post.iterate{cond(it)}
 
     elemsPre.forEach{
         if(it is DataTypeConst && isConcreteGeneric(it.concrType!!)) genericsSet+=it
         if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsSet+=it
         if(it is Function && it.name.startsWith("NEW")) heapsSet+=it
         else if(it is Function ) funcsSet+=it
-        if(it is Predicate) predicatePre+=it
-        if(it is Placeholder) {
-            placeholdersPre += it
-            varsSet+=ProgVar("${it.name}_${it.concrType}", it.concrType)
-        }
+        if(it is Placeholder) placeholdersPre += it
         if(it is Field) fieldsSet+=it
     }
 
@@ -328,63 +291,35 @@ fun globalIterate(pre: LogicElement,post: LogicElement) : Map<String, Set<Anythi
         if(it is ProgVar && it.name != "heap" && it.name !in specialHeapKeywords) varsSet+=it
         if(it is Function && it.name.startsWith("NEW")) heapsSet+=it
         else if(it is Function ) funcsSet+=it
-        if(it is Predicate) predicatePost+=it
-        if(it is Placeholder) {
-            placeholdersPost += it
-            varsSet+=ProgVar("${it.name}_${it.concrType}", it.concrType)
-        }
+        if(it is Placeholder) placeholdersPost += it
         if(it is Field) fieldsSet+=it
     }
 
-    return mapOf(
+    return mutableMapOf(
         "VARS" to varsSet,
         "HEAPS" to heapsSet,
         "FUNCS" to funcsSet,
         "GENERICS" to genericsSet,
-        "PREDICATES_PRE" to predicatePre,
-        "PREDICATES_POST" to predicatePost,
-        "PLACEHOLDERS_PRE" to placeholdersPre,
-        "PLACEHOLDERS_POST" to placeholdersPost,
+        "UNUSED_PLACEHOLDERS" to placeholdersPre.minus(placeholdersPost),
         "FIELDS" to fieldsSet
     )
 }
 
-fun replacePredicateContainingPlaceholders(pre: LogicElement, post: LogicElement, globalIterate:Map<String, Set<Anything>>): Pair<LogicElement, LogicElement> {
-    var newPre = pre
-    var newPost = post
-    val predicatePre = globalIterate["PREDICATES_PRE"] as Set<Predicate>
-    val predicatePost = globalIterate["PREDICATES_POST"] as Set<Predicate>
-    val prePlaceholders = globalIterate["PLACEHOLDERS_PRE"] as Set<Placeholder>
-    val postPlaceholders = globalIterate["PLACEHOLDERS_POST"] as Set<Placeholder>
-    val placeholders = prePlaceholders.intersect(postPlaceholders)
+fun replaceUnusedPlaceholdersWithWildcards(pre: LogicElement, unusedPlaceholders: Set<Placeholder>): Pair<LogicElement,Set<WildCardVar>> {
+    val newPre = pre
+    val newWildCards = mutableSetOf<WildCardVar>()
+    val placeholders = unusedPlaceholders.associate {
+            val wildCardVar = FreshGenerator.getFreshWildCard(it.concrType)
+            newWildCards.add(wildCardVar)
+            Pair(it as Term, wildCardVar as Term)
+     }
 
-    // replacing placeholders in precondition
-    predicatePre.map {
-            oldPredicate ->
-        var newFormula= (oldPredicate.iterate { el -> el is Placeholder && el in placeholders } as Set<Placeholder>).fold(oldPredicate) {
-                acc:Formula, ph : Placeholder->
-            And(acc, Predicate("=", listOf(ph, ProgVar("${ph.name}_${ph.concrType}", ph.concrType))))
-        }
-        val wildcards = oldPredicate.iterate { it is WildCardVar || it is Placeholder } as Set<ProgVar>
-            newFormula =
-                Exists(wildcards.toList(), newFormula)
-            newPre = replaceInFormula(newPre as Formula, oldPredicate, newFormula)
-    }
-
-    // replacing placeholders in postcondition
-    predicatePost.map {
-            oldPredicate ->
-        if(postPlaceholders.isNotEmpty()) {
-            postPlaceholders.map {
-                val globalPh= ProgVar("${it.name}_${it.concrType}", it.concrType)
-                val newFormula = replaceInLogicElement(oldPredicate as Predicate, mapOf(Pair(it, globalPh))) as Predicate
-                newPost = replaceInFormula(newPost as Formula, oldPredicate, newFormula)
-            }
-        }
-    }
-    return Pair(newPre,newPost)
+    return Pair(replaceInLogicElement(newPre, placeholders), newWildCards)
 }
 
+/**
+ * @return block of proof for static header
+ */
 fun getStaticHeader():BlockProofElements{
     return BlockProofElements(
         listOf(
@@ -399,6 +334,9 @@ fun getStaticHeader():BlockProofElements{
         "End Header")
 }
 
+/**
+ * @return block of proof containing set of assertions for the interface extension property
+ */
 fun interfaceExtends() : BlockProofElements {
     val assertions = mutableListOf<Assertion>()
     ADTRepos.interfaceDecl.forEach { i1 ->
@@ -409,6 +347,9 @@ fun interfaceExtends() : BlockProofElements {
     return BlockProofElements(assertions, "Interface Extensions Assertions")
 }
 
+/**
+ * @return block of proof corresponding to heap declaration
+ */
 fun getHeapsDeclaration() :BlockProofElements{
     val heaps = mutableListOf<BlockProofElements>()
     for (dtype in ADTRepos.dtypeMap) {
@@ -419,4 +360,43 @@ fun getHeapsDeclaration() :BlockProofElements{
                 EmptyProofBlock("\n; no fields of type ${dtype.key}: omitting declaration of ${dtype.value.heapType}")
     }
     return BlockProofElements(heaps, "HEAPS DECLARATION", "END HEAPS DECLARATION")
+}
+
+/**
+ * @return the transitive property for interface extension
+ */
+fun extendsProperty() :LogicElement{
+    val i1 = ProgVar("i1", model!!.intType)
+    val i2 = ProgVar("i2", model!!.intType)
+    val i3 = ProgVar("i3", model!!.intType)
+    val property = "extends"
+    return Forall(
+        listOf(i1,i2,i3),
+        Impl(
+            And(
+                Predicate(property, listOf(i1,i2)),
+                Predicate(property, listOf(i2,i3))
+            ),
+            Predicate(property, listOf(i1,i3))
+        )
+    )
+}
+
+/**
+ * @return the LogicElement corresponding to the inference of implements property
+ */
+fun implementsProperty() :LogicElement{
+    val i1 = ProgVar("i1", model!!.intType)
+    val i2 = ProgVar("i2", model!!.intType)
+    val obj = ProgVar("obj", model!!.intType)
+    return Forall(
+        listOf(i1,i2,obj),
+        Impl(
+            And(
+                Predicate("extends", listOf(i1,i2)),
+                Predicate("implements", listOf(obj,i1))
+            ),
+            Predicate("implements", listOf(obj,i2))
+        )
+    )
 }
