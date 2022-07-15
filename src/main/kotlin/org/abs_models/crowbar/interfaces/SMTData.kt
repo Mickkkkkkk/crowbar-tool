@@ -6,6 +6,7 @@ import org.abs_models.crowbar.main.ADTRepos
 import org.abs_models.crowbar.main.FunctionRepos
 import org.abs_models.crowbar.types.getReturnType
 import org.abs_models.frontend.ast.*
+import org.abs_models.frontend.typechecker.BoundedType
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.InterfaceType
 import org.abs_models.frontend.typechecker.Type
@@ -390,17 +391,21 @@ fun genericTypeSMTName(type : Type) :String{
     return genericSMTName(if (!type.qualifiedName.contains(".")) type.toString() else type.qualifiedName, type)
 }
 
-fun genericSMTName(name :String, type : Type) : String =
-        if(isGeneric(type))
-            "${name}_${
-                (type as DataTypeType).typeArgs.joinToString("_") { 
+fun genericSMTName(name :String, type : Type) : String {
+    val newType = if(type is BoundedType) type.boundType else type
+    val newName = if(type is BoundedType) type.boundType.qualifiedName else name
+    return  if(isGeneric(newType))
+            "${newName}_${
+                (newType as DataTypeType).typeArgs.joinToString("_") { 
                 if(it.toString() == "Unbound Type" || it.isUnknownType)
                     "UNBOUND"
                 else {
                     genericTypeSMTName(it)
                 }
-            }}"
-        else name
+            }
+        }"
+    else newName
+}
 
 fun getSMT(name: String, params: String): String{
     val ret =

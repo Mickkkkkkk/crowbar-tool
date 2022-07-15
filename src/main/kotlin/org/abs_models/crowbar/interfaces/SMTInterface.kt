@@ -9,6 +9,7 @@ import org.abs_models.crowbar.main.ADTRepos.objects
 import org.abs_models.crowbar.main.ADTRepos.setUsedHeaps
 import org.abs_models.crowbar.main.FunctionRepos.concretizeFunctionTosSMT
 import org.abs_models.crowbar.rule.FreshGenerator
+import org.abs_models.frontend.typechecker.BoundedType
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.InterfaceType
 import org.abs_models.frontend.typechecker.Type
@@ -185,6 +186,8 @@ fun resetWildCards() {
 fun translateType(type:Type, asReturnType :Boolean=false) : String{
     return if(type.isUnknownType)
         throw Exception("Unknown Type Cannot be Translated")
+    else if (type is BoundedType && type.hasBoundType())
+        return translateType(type.boundType!!, asReturnType)
     else if (isGeneric(type)) {
         ADTRepos.addGeneric(type as DataTypeType)
         genericTypeSMTName(type)
