@@ -247,6 +247,27 @@ class ListClass(List<Type> list, Type ft){
         return myContains(Cons(2,Cons(3,Cons(2,Cons(2,Nil)))), 4);
     }
 
+    [Spec : Ensures( result == 2 ) ]
+    Int lengthCallNonEmptyListSuccess(){
+        return length(Cons(1, Cons(2, Nil)));
+    }
+
+
+    [Spec : Ensures( result == 3 ) ]
+    Int lengthCallNonEmptyListFail(){
+        return length(Cons(1, Cons(2, Nil)));
+    }
+
+
+    [Spec : Ensures( result == 0 ) ]
+    Int lengthCallEmptyListSuccess(){
+        return length(Nil);
+    }
+
+    [Spec : Ensures( result > 3 ) ]
+    Int lengthCallEmptyListFail(){
+        return length(Nil);
+    }
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){

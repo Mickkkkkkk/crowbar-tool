@@ -197,7 +197,7 @@ object FunctionRepos{
 
 	val builtInFunctionNames = setOf(
 		"abs",
-		"head","tail", "appendright", "concatenate", //list
+		"head","tail", "appendright", "concatenate", "length", //list
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
 		"contains", //set
@@ -206,9 +206,9 @@ object FunctionRepos{
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Pair<DataTypeType, List<Type>>>()
 	val parametricFunctions = mutableMapOf<String,FunctionDecl>()
-	val concreteParametricNameSMT = mutableMapOf<Pair<String,List<Type>>,String>()
-	val parametricFunctionTypeMap = mutableMapOf<Pair<String,List<Type>>,Map<TypeParameter,Type>>()
-	val concreteFunctionsToSMT = mutableMapOf<Pair<String,List<Type>>,Pair<String,String>>()
+	val concreteParametricNameSMT = mutableMapOf<Pair<String,String>,String>()
+	val parametricFunctionTypeMap = mutableMapOf<Pair<String,String>,Map<TypeParameter,Type>>()
+	val concreteFunctionsToSMT = mutableMapOf<Pair<String,String>,Pair<String,String>>()
 
     fun isKnown(str: String) = known.containsKey(str)
     fun get(str: String) = known.getValue(str)
@@ -305,17 +305,21 @@ object FunctionRepos{
 		}
 	}
 
-	fun concretizeNameToSMT(function:Function): String{
-		val first = Pair(function.name,function.params.map{ getReturnType(it)})
-		parametricFunctionTypeMap[first] = getParameterMap(function)
-		if(first !in concreteParametricNameSMT)
-			concreteParametricNameSMT[first] = "${function.name}_${parametricFunctionTypeMap[first]!!.values.joinToString("_") { translateType(it) }}"
-		return concreteParametricNameSMT[first]!!
+	private fun getParamsTypesFunction(function: Function) :String{
+		return function.params.joinToString("="){ translateType(getReturnType(it))}
 	}
 
-	fun concretizeFunctionToSMT(name:String, paramTypes:List<Type>) {
+	fun concretizeNameToSMT(function:Function): String{
+		val pairFunctionConcreteParamsTypes = Pair(function.name,getParamsTypesFunction(function))
+		parametricFunctionTypeMap[pairFunctionConcreteParamsTypes] = getParameterMap(function)
+		if(pairFunctionConcreteParamsTypes !in concreteParametricNameSMT)
+			concreteParametricNameSMT[pairFunctionConcreteParamsTypes] = "${function.name}_${parametricFunctionTypeMap[pairFunctionConcreteParamsTypes]!!.values.joinToString("_") { translateType(it) }}"
+		return concreteParametricNameSMT[pairFunctionConcreteParamsTypes]!!
+	}
+
+	fun concretizeFunctionToSMT(name:String, paramTypes:String) {
 		if(Pair(name,paramTypes) !in parametricFunctionTypeMap )
-			throw Exception("Function $name with parameters of types ${paramTypes.map { it.qualifiedName }} not defined")
+			throw Exception("Function $name with parameters of types ${paramTypes.replace("=", " ")} not defined")
 
 		val map = parametricFunctionTypeMap[Pair(name,paramTypes)]!!
 		val functionDecl = this.parametricFunctions[name]!!
@@ -329,7 +333,7 @@ object FunctionRepos{
 		(term.iterate { it is Function  && it.name in parametricFunctions } as Set<Function>).forEach{
 			func:Function ->
 				val funcName = func.name
-				val funcParamTypes = func.params.map { applyBinding(getReturnType(it), map) }
+				val funcParamTypes = getParamsTypesFunction(func)
 				if(name != funcName || funcParamTypes!=paramTypes) {
 					concretizeNameToSMT(func)
 					concretizeFunctionToSMT(funcName, funcParamTypes)

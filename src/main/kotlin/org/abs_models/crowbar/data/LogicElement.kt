@@ -154,6 +154,17 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        return other is DataTypeConst && other.name == this.name && other.concrType == this.concrType && other.params == this.params
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + (concrType?.hashCode() ?: 0)
+        result = 31 * result + params.hashCode()
+        return result
+    }
+
 }
 
 fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set<String>): Formula {

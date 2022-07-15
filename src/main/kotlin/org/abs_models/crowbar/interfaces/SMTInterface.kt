@@ -189,7 +189,6 @@ fun translateType(type:Type, asReturnType :Boolean=false) : String{
         ADTRepos.addGeneric(type as DataTypeType)
         genericTypeSMTName(type)
     }else if(type.isTypeParameter) {
-        println()
         throw Exception("Parameter Type Cannot Be Translated")
     }
     else if(type.isInterfaceType && asReturnType)

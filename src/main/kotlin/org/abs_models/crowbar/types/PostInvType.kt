@@ -892,7 +892,7 @@ fun getReturnType(term: Term) : Type {
         return term.concrType!!
     }
     else if (term is Function) {
-        if(term.name.startsWith("NEW"))
+        if(term.name.startsWith("NEW") || term.name in setOf("length"))
             return ADTRepos.model!!.intType
         if(term.name in setOf( "contains","emptyMap"))
             return ADTRepos.model!!.boolType
