@@ -268,6 +268,21 @@ class ListClass(List<Type> list, Type ft){
     Int lengthCallEmptyListFail(){
         return length(Nil);
     }
+
+    [Spec : Ensures( result == Nil) ]
+    List<Int> returnWrappedNilSuccess(){
+        return list(Nil);
+    }
+
+    [Spec : Ensures( head(result) == 1) ]
+    List<Int> returnWrappedListSuccess(){
+        return list(Cons(1,Nil));
+    }
+
+    [Spec : Ensures( head(tail(result)) == 2) ]
+    List<Int> returnWrappedListComplexSuccess(){
+        return list(Cons(1,Cons(2, Nil)));
+    }
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){

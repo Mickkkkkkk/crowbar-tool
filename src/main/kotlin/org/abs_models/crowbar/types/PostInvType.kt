@@ -902,7 +902,7 @@ fun getReturnType(term: Term) : Type {
             return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(1)
         if(term.name == "trdT")
             return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(2)
-        if(term.name in setOf("ABS.StdLib.Cons_1", "ABS.StdLib.Insert_1", "ABS.StdLib.InsertAssoc_1","tail"))
+        if(term.name in setOf("ABS.StdLib.Cons_1", "ABS.StdLib.Insert_1", "ABS.StdLib.InsertAssoc_1","tail", "list"))
             return (getReturnType(term.params[0]) as DataTypeType)
         if (term.name in arithFunction ){
             val left = getReturnType(term.params[0])
