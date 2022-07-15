@@ -201,7 +201,8 @@ object FunctionRepos{
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
 		"contains", //set
-		"emptyMap", "lookup" //map
+		"emptyMap", "lookup", //map
+		"println", "toString" //String
 	)
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val genericFunctions = mutableMapOf<String,Pair<DataTypeType, List<Type>>>()
@@ -255,7 +256,7 @@ object FunctionRepos{
 	}
 
 	private fun initFunctionDef(fDecl: FunctionDecl) {
-		if(fDecl.functionDef is ExpFunctionDef){
+		if(fDecl.functionDef is ExpFunctionDef || fDecl.functionDef is BuiltinFunctionDef && fDecl.name in builtInFunctionNames ){
 			known[fDecl.qualifiedName] = fDecl
 		} else {
 			if(reporting) throw Exception("builtin types not supported")

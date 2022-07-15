@@ -896,6 +896,8 @@ fun getReturnType(term: Term) : Type {
             return ADTRepos.model!!.intType
         if(term.name in setOf( "contains","emptyMap"))
             return ADTRepos.model!!.boolType
+        if(term.name == "toString" || term.name.startsWith('\"'))
+            return ADTRepos.model!!.stringType
         if(term.name in setOf("ABS.StdLib.Cons_0","ABS.StdLib.Insert_0", "fst","fstT","head", "appendright","concatenate"))
             return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0)
         if(term.name in setOf("snd","sndT","lookup"))
