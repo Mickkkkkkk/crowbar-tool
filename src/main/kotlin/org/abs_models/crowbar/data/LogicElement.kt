@@ -210,6 +210,9 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
 
             val firstMatchTerm = Function(wildCardName)
             val branchTerm = branches.foldRight(firstMatchTerm as Term) { branchTerm: BranchTerm, acc: Term ->
+
+                val boundBranch = if(isGeneric(expectedTypeConcr)) bindGenerics(expectedTypeConcr, branchTerm.branch) else branchTerm.branch
+
                 if(branchTerm.matchTerm is DataTypeConst && isGeneric(branchTerm.matchTerm.concrType)){
                     val matches =
                         if(match is ProgVar && match.name == "data")
@@ -228,7 +231,7 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                         }
                     }
                     val newMatchSMT = And(Is(genericSMTName(branchTerm.matchTerm.name, branchTerm.matchTerm.concrType!!), match), matches)
-                    var branch = branchTerm.branch
+                    var branch = boundBranch
                     val placeholders = branch.iterate { it is Placeholder }
                     if(placeholders.isNotEmpty())
                         branch = replaceInTerm(branch, ADTRepos.placeholdersMap.filter { it.key in placeholders } as Map<Term,Term>)
@@ -245,7 +248,7 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                     var placeholderToBeReplaced: Set<Placeholder>
                     val branch =
                     if (branchTerm.matchTerm is DataTypeConst) {
-                        placeholderToBeReplaced =  branchTerm.branch.iterate { it is Placeholder } as Set<Placeholder>
+                        placeholderToBeReplaced =  boundBranch.iterate { it is Placeholder } as Set<Placeholder>
                         val mapPlaceholderToFunctions = placeholderToBeReplaced.associate {
                             Pair(it,
                                 listNamesToFunction(match,
@@ -253,18 +256,17 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                         }
 
                         if(mapPlaceholderToFunctions.isNotEmpty())
-                            replaceInTerm(branchTerm.branch, mapPlaceholderToFunctions as Map<Term, Term>)
+                            replaceInTerm(boundBranch, mapPlaceholderToFunctions as Map<Term, Term>)
                         else {
-                            val list = getFunctionForDataTypeConstElem(branchTerm.matchTerm, branchTerm.branch)
+                            val list = getFunctionForDataTypeConstElem(branchTerm.matchTerm, boundBranch)
 
                             if (list.isNotEmpty())
                                 list.foldRight(match) { functionName: String, function: Term ->
                                     Function(functionName, listOf(function))
                                 }
-                            else branchTerm.branch
+                            else boundBranch
                         }
-                    }else
-                            branchTerm.branch
+                    }else boundBranch
 
 
                     Ite(matchSMT, branch, acc)
@@ -340,7 +342,7 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
     override fun toSMT(indent:String) : String {
         if(params.isEmpty()) return name
         val list = if(name == "=") {
-            val boundTerms = boundTerms(params[0], params[1])
+            val boundTerms = bindTerms(params[0], params[1])
             val boundParam0 = boundTerms.first
             val boundParam1 = boundTerms.second
 
@@ -635,9 +637,13 @@ fun prettyPrintFunction(params: List<Term>, name: String):String{
     return name+"("+params.map { p -> p.prettyPrint() }.fold("") { acc, nx -> "$acc,$nx" }.removePrefix(",") + ")"
 }
 
-fun boundGeneric(bindingType: Type, unboundTerm: Term): Term {
+fun bindGenerics(bindingType: Type, unboundTerm: Term): Term {
     if (unboundTerm is Function)
         return unboundTerm
+    if (unboundTerm is Placeholder)
+        return Placeholder(unboundTerm.name, bindingType)
+    if (unboundTerm is WildCardVar)
+        return WildCardVar(unboundTerm.name, bindingType)
     if (unboundTerm is ProgVar)
         return ProgVar(unboundTerm.name, bindingType)
     if (unboundTerm is Field)
@@ -670,11 +676,11 @@ fun boundGeneric(bindingType: Type, unboundTerm: Term): Term {
     return DataTypeConst(
         unboundTerm.name,
         bindingType,
-        bindingTypeArgs.zip(unboundTerm.params).map<Pair<Type, Term>, Term> { boundGeneric(it.first, it.second) })
+        bindingTypeArgs.zip(unboundTerm.params).map<Pair<Type, Term>, Term> { bindGenerics(it.first, it.second) })
 }
 
 
-fun boundTerms(term1:Term, term2: Term):Pair<Term,Term>{
+fun bindTerms(term1:Term, term2: Term):Pair<Term,Term>{
     var boundTerm1 = term1
     var boundTerm2 = term2
 
@@ -689,9 +695,9 @@ fun boundTerms(term1:Term, term2: Term):Pair<Term,Term>{
     val term2fullyBounded = !term2IsUnbound && !term2NotWellKnown
 
     if((!term1fullyBounded && !term2NotWellKnown)){
-        boundTerm1 = boundGeneric(getReturnType(term2), term1)
+        boundTerm1 = bindGenerics(getReturnType(term2), term1)
     }else if(!term2fullyBounded ) {
-        boundTerm2 = boundGeneric(getReturnType(term1), term2)
+        boundTerm2 = bindGenerics(getReturnType(term1), term2)
     }
 
     if(term1 is WildCardVar) {

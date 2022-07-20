@@ -293,6 +293,40 @@ class ListClass(List<Type> list, Type ft){
     Int nthFail(){
         return nth(Cons(1, Cons(2, Nil)), 1);
     }
+
+
+
+    [Spec: Ensures(result == Nil)]
+    List<Int> withoutEveryElemSuccess(){
+        return without(Cons(2, Cons(2, Nil)), 2);
+    }
+
+    [Spec: Ensures(result != Nil)]
+    List<Int> withoutEveryElemFail(){
+        return without(Cons(2, Cons(2, Nil)), 2);
+    }
+
+    [Spec: Ensures(result == Cons(2, Cons(2, Nil)))]
+    List<Int> withoutNoElemSuccess(){
+        return without(Cons(2, Cons(2, Nil)), 1);
+    }
+
+
+    [Spec: Ensures(result != Cons(2, Cons(2, Nil)))]
+    List<Int> withoutNoElemFail(){
+        return without(Cons(2, Cons(2, Nil)), 1);
+    }
+
+    [Spec: Ensures(result == Cons(1, Nil))]
+    List<Int> withoutSomeElemSuccess(){
+        return without(Cons(2, Cons(1, Nil)), 2);
+    }
+
+
+    [Spec: Ensures(result != Cons(1, Nil))]
+    List<Int> withoutSomeElemFail(){
+        return without(Cons(2, Cons(1, Nil)), 2);
+    }
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){

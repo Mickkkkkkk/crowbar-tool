@@ -168,13 +168,30 @@ class GenericsTest : CrowbarTest() {
                 val returnWrappedListComplexSuccess = classDecl.extractMethodNode(postInv, "returnWrappedListComplexSuccess", repos)
                 executeNode(returnWrappedListComplexSuccess, repos, postInv) shouldBe true
 
-
                 val nthSuccess = classDecl.extractMethodNode(postInv, "nthSuccess", repos)
                 executeNode(nthSuccess, repos, postInv) shouldBe true
 
                 val nthFail = classDecl.extractMethodNode(postInv, "nthFail", repos)
                 executeNode(nthFail, repos, postInv) shouldBe false
 
+                val withoutEveryElemSuccess = classDecl.extractMethodNode(postInv, "withoutEveryElemSuccess", repos)
+                executeNode(withoutEveryElemSuccess, repos, postInv) shouldBe true
+
+                val withoutEveryElemFail = classDecl.extractMethodNode(postInv, "withoutEveryElemFail", repos)
+                executeNode(withoutEveryElemFail, repos, postInv) shouldBe false
+
+
+                val withoutNoElemSuccess = classDecl.extractMethodNode(postInv, "withoutNoElemSuccess", repos)
+                executeNode(withoutNoElemSuccess, repos, postInv) shouldBe true
+
+                val withoutNoElemFail = classDecl.extractMethodNode(postInv, "withoutNoElemFail", repos)
+                executeNode(withoutNoElemFail, repos, postInv) shouldBe false
+
+                val withoutSomeElemSuccess = classDecl.extractMethodNode(postInv, "withoutSomeElemSuccess", repos)
+                executeNode(withoutSomeElemSuccess, repos, postInv) shouldBe true
+
+                val withoutSomeElemFail = classDecl.extractMethodNode(postInv, "withoutSomeElemFail", repos)
+                executeNode(withoutSomeElemFail, repos, postInv) shouldBe false
 
             }
 
