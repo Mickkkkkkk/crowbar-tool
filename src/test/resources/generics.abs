@@ -283,6 +283,16 @@ class ListClass(List<Type> list, Type ft){
     List<Int> returnWrappedListComplexSuccess(){
         return list(Cons(1,Cons(2, Nil)));
     }
+
+    [Spec: Ensures(result == 1)]
+    Int nthSuccess(){
+        return nth(Cons(1, Cons(2, Nil)), 0);
+    }
+
+    [Spec: Ensures(result == 1)]
+    Int nthFail(){
+        return nth(Cons(1, Cons(2, Nil)), 1);
+    }
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){

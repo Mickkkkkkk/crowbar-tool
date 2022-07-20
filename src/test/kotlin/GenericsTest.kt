@@ -169,6 +169,12 @@ class GenericsTest : CrowbarTest() {
                 executeNode(returnWrappedListComplexSuccess, repos, postInv) shouldBe true
 
 
+                val nthSuccess = classDecl.extractMethodNode(postInv, "nthSuccess", repos)
+                executeNode(nthSuccess, repos, postInv) shouldBe true
+
+                val nthFail = classDecl.extractMethodNode(postInv, "nthFail", repos)
+                executeNode(nthFail, repos, postInv) shouldBe false
+
 
             }
 

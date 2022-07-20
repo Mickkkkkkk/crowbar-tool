@@ -197,7 +197,7 @@ object FunctionRepos{
 
 	val builtInFunctionNames = setOf(
 		"abs",
-		"head","tail", "appendright", "concatenate", "length", "list", //list
+		"head","tail", "appendright", "concatenate", "length", "list", "nth", //list
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
 		"contains", //set

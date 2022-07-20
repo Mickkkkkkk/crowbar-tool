@@ -235,11 +235,10 @@ data class Case(val match : Term, val expectedType :String, val branches : List<
                     Ite(newMatchSMT, branch, acc)
                 }else
                 {
-
                     val matchSMT =
                         if (branchTerm.matchTerm is DataTypeConst)
                             extractPatternMatching(match, branchTerm.matchTerm, freeVars)
-                        else if (branchTerm.matchTerm is ProgVar && branchTerm.matchTerm.name in freeVars)
+                        else if (branchTerm.matchTerm !is WildCardVar)
                             Eq(match, branchTerm.matchTerm)
                         else
                             True
