@@ -142,6 +142,7 @@ class C{
         return res;
     }
 
+
     [Spec: Ensures(result == 1)]
     Int innerWildCardPairFail(){
         Int res = 0;
@@ -251,6 +252,18 @@ class C{
             Cons(_, head1)  => v=1;
         }
         return v;
+    }
+
+
+    [Spec: Ensures(result == 1)]
+    Int nestedPlaceholderPairSuccess(){
+        Int res = 0;
+        Pair<Type,Int> x = Pair(Type2(Type3),1);
+        switch(x) {
+            Pair(Type2(_),aa) =>  res = aa;
+            _ =>  res = res;
+        }
+        return res;
     }
 }
 

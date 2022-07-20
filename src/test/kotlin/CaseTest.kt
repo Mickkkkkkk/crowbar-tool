@@ -105,6 +105,11 @@ class CaseTest : CrowbarTest() {
 					classDecl.extractMethodNode(postInv, "listPlaceholdersSameNameMoreTypesSuccess", repos)
 				executeNode(listPlaceholdersSameNameMoreTypesSuccess, repos, postInv) shouldBe true
 
+
+				val nestedPlaceholderPairSuccess =
+					classDecl.extractMethodNode(postInv, "nestedPlaceholderPairSuccess", repos)
+				executeNode(nestedPlaceholderPairSuccess, repos, postInv) shouldBe true
+
 			}
 		}
 	}

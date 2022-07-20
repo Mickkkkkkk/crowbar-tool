@@ -145,9 +145,9 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
     fun equalsSMT(term:Term):Formula{
 
         val matchingFunctions = placeholdersToSMT().map {
-            Pair(it.key, it.value.foldRight(term){s: String, acc: Term -> Function(s,listOf(acc)) })
+            Pair(it.key, it.value.fold(term){acc: Term,s: String -> Function(s,listOf(acc)) })
         } + concreteParamsToSMT().map {
-                Pair(it.key, it.value.foldRight(term){s: String, acc: Term -> Function(s,listOf(acc)) })
+                Pair(it.key, it.value.fold(term){acc: Term,s: String -> Function(s,listOf(acc)) })
         }
         return matchingFunctions.foldRight(Is(genericSMTName(name, concrType!!), term)){ pair: Pair<Term, Term>, acc: Formula ->
             And(acc, Eq(pair.first,pair.second))
