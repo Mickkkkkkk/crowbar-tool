@@ -26,6 +26,9 @@ object ADTRepos {
 	val exceptionDecl = mutableListOf<ExceptionDecl>()
 	val interfaceDecl = mutableListOf<InterfaceDecl>()
 
+
+	val parametricDataTypeDeclsMap = mutableMapOf<String, ParametricDataTypeDecl>()
+
 	val placeholdersMap : MutableMap<Placeholder,Term> = mutableMapOf()
 
 	val objects : MutableMap<String,UnionType> = mutableMapOf()
@@ -168,6 +171,8 @@ object ADTRepos {
 				&& !moduleDecl.name.startsWith("ABS.StdLib")) continue
 			for(decl in moduleDecl.decls){
 				if(!moduleDecl.name.startsWith("ABS.StdLib.Exceptions") && decl is DataTypeDecl && decl.name != "Spec" && decl.qualifiedName !in ignorableBuiltInDataTypes){
+					if(decl is ParametricDataTypeDecl && decl.hasTypeParameter())
+						parametricDataTypeDeclsMap[decl.qualifiedName] = decl
 					if(!isBuildInType(decl.type)) {
 						if (decl.hasDataConstructor() && (decl !is ParametricDataTypeDecl || !decl.hasTypeParameter()))
 							dTypesDecl.add(decl)
@@ -201,7 +206,7 @@ object FunctionRepos{
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
 		"contains", //set
-		"emptyMap", "lookup", //map
+		"emptyMap", "lookup", "map", //map
 		"println", "toString" //String
 	)
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
@@ -259,8 +264,8 @@ object FunctionRepos{
 		if(fDecl.functionDef is ExpFunctionDef || fDecl.functionDef is BuiltinFunctionDef && fDecl.name in builtInFunctionNames ){
 			known[fDecl.qualifiedName] = fDecl
 		} else {
-			if(reporting) throw Exception("builtin types not supported")
-			System.err.println("builtin types not supported")
+			if(reporting) throw Exception("${fDecl.functionDef} not supported")
+			System.err.println("${fDecl.functionDef} not supported")
 			exitProcess(-1)
 		}
 	}

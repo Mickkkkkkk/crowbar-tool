@@ -5,6 +5,9 @@ module Generics;
 
 data Type = Type1 | Type2;
 
+
+data AnotherType = AnotherType1(AnotherType t) | AnotherType2 (AnotherType t) | AnotherType3;
+
 [Ensures(result != Just(Nothing))]
 def Maybe<Maybe<Int>> trivialFunction(Int x) = Just(Just(1));
 
@@ -457,6 +460,27 @@ class MapClass{
     [Ensures(result == Just(1))]
     Maybe<Int> callLookupOnNonEmptyMapWithElemFail(){
         return lookup(InsertAssoc(Pair(1,2), EmptyMap), 1);
+    }
+
+
+    [Spec: Ensures(result != EmptyMap)]
+    Map<Int, AnotherType> mapFunctionNonEmptySuccess(){
+        return map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil)));
+    }
+
+    [Spec: Ensures(result == EmptyMap)]
+    Map<Int, AnotherType> mapFunctionNonEmptyFail(){
+        return map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil)));
+    }
+
+    [Spec: Ensures(result == Just(AnotherType3))]
+    Maybe<AnotherType> mapWrappingWithLookupSuccess(){
+        return lookup(map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil))), 1);
+    }
+
+    [Spec: Ensures(result != Just(AnotherType3))]
+    Maybe<AnotherType> mapWrappingWithLookupFail(){
+        return lookup(map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil))), 1);
     }
 
 }

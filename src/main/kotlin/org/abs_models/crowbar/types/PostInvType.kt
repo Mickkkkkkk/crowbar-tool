@@ -22,9 +22,8 @@ import org.abs_models.crowbar.tree.*
 import org.abs_models.frontend.ast.*
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
+import org.abs_models.frontend.typechecker.TypeParameter
 import org.abs_models.frontend.typechecker.UnknownType
-import java.io.PrintWriter
-import java.io.StringWriter
 import kotlin.system.exitProcess
 
 
@@ -898,6 +897,14 @@ fun getReturnType(term: Term) : Type {
             return ADTRepos.model!!.boolType
         if(term.name == "toString" || term.name.startsWith('\"'))
             return ADTRepos.model!!.stringType
+        if(term.name == "map"){
+            val parametricDataType = ADTRepos.parametricDataTypeDeclsMap["ABS.StdLib.Map"]!!.type as DataTypeType
+            val firstElemOfList = (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0) as DataTypeType
+            val typeA  = firstElemOfList.getTypeArg(0)
+            val typeB  = firstElemOfList.getTypeArg(1)
+            return applyBinding(parametricDataType, parametricDataType.typeArgs.zip(listOf(typeA,typeB)).associate { Pair(it.first as TypeParameter, it.second) })
+        }
+
         if(term.name in setOf("ABS.StdLib.Cons_0","ABS.StdLib.Insert_0", "fst","fstT","head", "appendright","concatenate", "nth"))
             return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0)
         if(term.name in setOf("snd","sndT","lookup"))

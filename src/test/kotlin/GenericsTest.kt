@@ -277,13 +277,36 @@ class GenericsTest : CrowbarTest() {
 
                 val callLookupOnNonEmptyMapWithoutElemSuccess = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithoutElemSuccess", repos)
                 executeNode(callLookupOnNonEmptyMapWithoutElemSuccess, repos, postInv) shouldBe true
+
                 val callLookupOnNonEmptyMapWithoutElemFail = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithoutElemFail", repos)
                 executeNode(callLookupOnNonEmptyMapWithoutElemFail, repos, postInv) shouldBe false
+
                 val callLookupOnNonEmptyMapWithElemSuccess = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithElemSuccess", repos)
                 executeNode(callLookupOnNonEmptyMapWithElemSuccess, repos, postInv) shouldBe true
+
                 val callLookupOnNonEmptyMapWithElemFail = classDecl.extractMethodNode(postInv, "callLookupOnNonEmptyMapWithElemFail", repos)
                 executeNode(callLookupOnNonEmptyMapWithElemFail, repos, postInv) shouldBe false
+
+                val mapFunctionNonEmptySuccess = classDecl.extractMethodNode(postInv, "mapFunctionNonEmptySuccess", repos)
+                executeNode(mapFunctionNonEmptySuccess, repos, postInv) shouldBe true
+
+                val mapFunctionNonEmptyFail = classDecl.extractMethodNode(postInv, "mapFunctionNonEmptyFail", repos)
+                executeNode(mapFunctionNonEmptyFail, repos, postInv) shouldBe false
+
+                val mapWrappingWithLookupSuccess = classDecl.extractMethodNode(postInv, "mapWrappingWithLookupSuccess", repos)
+                executeNode(mapWrappingWithLookupSuccess, repos, postInv) shouldBe true
                 }
+
+
+
+        }
+
+        "z3 mapWrappingWithLookupFail"{
+            smtPath = z3
+            val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
+            val classDecl = model.extractClassDecl("Generics", "MapClass")
+            val mapWrappingWithLookupFail = classDecl.extractMethodNode(postInv, "mapWrappingWithLookupFail", repos)
+            executeNode(mapWrappingWithLookupFail, repos, postInv) shouldBe false
         }
     }
 }
