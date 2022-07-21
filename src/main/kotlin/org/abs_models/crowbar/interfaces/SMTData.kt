@@ -3,7 +3,6 @@ package org.abs_models.crowbar.interfaces
 import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Function
 import org.abs_models.crowbar.main.ADTRepos
-import org.abs_models.crowbar.main.FunctionRepos
 import org.abs_models.crowbar.types.getReturnType
 import org.abs_models.frontend.ast.*
 import org.abs_models.frontend.typechecker.BoundedType
@@ -72,8 +71,10 @@ data class DirectFunDecls(val directFunDecls : List<DirectFunDecl>) : ProofEleme
         var sigs=""
         var defs=""
         directFunDecls.forEach {
-            sigs+=it.getSign()
-            defs+=it.getDef()+"\n"
+            if(it.name !in ADTRepos.selectorNames) {
+                sigs += it.getSign()
+                defs += it.getDef() + "\n"
+            }
         }
         if(sigs.isNotBlank())
             return "\n(define-funs-rec(\n$sigs)(\n$defs))"
@@ -115,7 +116,7 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
                     dataConstructor.constructorArgList.map {
                         if (!isGeneric(it.type)) {
                             ArgsSMT(
-                                "${dataConstructor.qualifiedName}_${count++}",
+                                getSelectorName(dataConstructor, count++),
                                 listOf(
                                     Function(
                                         if (concreteMap[it.type]!!.qualifiedName != "Unbound Type") {
@@ -126,7 +127,7 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
                             )
                         } else {
                             ArgsSMT(
-                                "${dataConstructor.qualifiedName}_${count++}",
+                                getSelectorName(dataConstructor, count++),
                                 listOf(
                                     Function(it.type.qualifiedName + "_" +
                                             (it.type as DataTypeType).typeArgs.joinToString("_") { type ->
@@ -150,6 +151,8 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
         return listOf(name, declaration, valueOf)
     }
 
+
+
     override fun toSMT(indent: String): String {
         val additionalName ="_${concreteTypes.joinToString("_") { 
                     if(it.qualifiedName != "Unbound Type")
@@ -164,7 +167,7 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
                 ArgsSMT("${dataConstructor.qualifiedName}$additionalName",
                     dataConstructor.constructorArgList.map {
                         ArgsSMT(
-                            "${dataConstructor.qualifiedName}_${count++}",
+                            getSelectorName(dataConstructor.qualifiedName, count++),
                             listOf(
                                 Function(
                                     if (concreteMap[it.type]!!.qualifiedName != "Unbound Type")
@@ -186,6 +189,26 @@ data class GenericTypeDecl(val dTypeDecl : DataTypeDecl, val concreteMap : Map<T
         return decl.toSMT() + "\n$valueOf"
     }
 }
+
+fun getSelectorName(dataConstructorName :String, paramNum:Int) =  getSelectorName(getConstructorSafely(dataConstructorName), paramNum)
+
+fun getSelectorName(dataConstructor: DataConstructor, paramNum :Int) : String {
+    val args = dataConstructor.constructorArgs.map { it }
+    return if(args.get(paramNum).selectorName != null) {
+        val arg = args.get(paramNum)
+        getSelectorName(arg.selectorName.name, dataConstructor.qualifiedName)
+    }
+    else "${dataConstructor.qualifiedName}_${paramNum}"
+}
+
+fun getSelectorName(selectorName:String, constructorName: String) : String =
+    if(selectorName !in ADTRepos.omonymousSelectorsMap)
+        selectorName
+    else "${selectorName}_${constructorName}"
+
+
+fun getConstructorSafely(name : String) : DataConstructor = if(name in ADTRepos.dataConstructurMap) ADTRepos.dataConstructurMap[name]!! else throw Exception("Constructor $name not defined")
+
 
 data class DataTypesDecl(val dTypesDecl: List<DataTypeDecl>, val exceptionDecl: MutableList<ExceptionDecl>, val interfaceDecl: MutableList<InterfaceDecl> ) :
     ProofElement {
@@ -217,7 +240,7 @@ data class DataTypesDecl(val dTypesDecl: List<DataTypeDecl>, val exceptionDecl: 
                         ArgsSMT(dataConstructor.qualifiedName,
                             dataConstructor.constructorArgList.map {
                                 ArgsSMT(
-                                    "${dataConstructor.qualifiedName}_${count++}",
+                                    getSelectorName(dataConstructor.qualifiedName, count++),
                                     listOf(Function(translateType(it.type, true)))
                                 )
                             })

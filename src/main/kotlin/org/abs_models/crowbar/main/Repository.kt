@@ -26,6 +26,10 @@ object ADTRepos {
 	val exceptionDecl = mutableListOf<ExceptionDecl>()
 	val interfaceDecl = mutableListOf<InterfaceDecl>()
 
+	val selectorNames = mutableMapOf<String, Type>()
+	val anonymousSelectorNames = mutableMapOf<String, Type>()
+	val dataConstructurMap = mutableMapOf<String, DataConstructor>()
+ 	val omonymousSelectorsMap = mutableMapOf<String, MutableList<DataConstructor>>()
 
 	val parametricDataTypeDeclsMap = mutableMapOf<String, ParametricDataTypeDecl>()
 
@@ -159,6 +163,10 @@ object ADTRepos {
 		exceptionDecl.clear()
 		interfaceDecl.clear()
 		objects.clear()
+		selectorNames.clear()
+	 anonymousSelectorNames.clear()
+	 dataConstructurMap.clear()
+	 omonymousSelectorsMap.clear()
 		dtypeMap["ABS.StdLib.Int"] = HeapDecl("ABS.StdLib.Int")
 		dtypeMap["ABS.StdLib.Float"] = HeapDecl("ABS.StdLib.Float")
 	}
@@ -171,12 +179,16 @@ object ADTRepos {
 				&& !moduleDecl.name.startsWith("ABS.StdLib")) continue
 			for(decl in moduleDecl.decls){
 				if(!moduleDecl.name.startsWith("ABS.StdLib.Exceptions") && decl is DataTypeDecl && decl.name != "Spec" && decl.qualifiedName !in ignorableBuiltInDataTypes){
-					if(decl is ParametricDataTypeDecl && decl.hasTypeParameter())
+					if(decl.hasDataConstructor()){
+						saveSelectorNames(decl.dataConstructors)
+					}
+					if(decl is ParametricDataTypeDecl) {
 						parametricDataTypeDeclsMap[decl.qualifiedName] = decl
+					}
 					if(!isBuildInType(decl.type)) {
-						if (decl.hasDataConstructor() && (decl !is ParametricDataTypeDecl || !decl.hasTypeParameter()))
+						if (decl.hasDataConstructor() && (decl !is ParametricDataTypeDecl || !decl.hasTypeParameter())) {
 							dTypesDecl.add(decl)
-						else
+						}else
 							primitiveDtypesDecl.add(decl)
 					}
 					dtypeMap[decl.qualifiedName] = HeapDecl(decl.type.qualifiedName)
@@ -187,6 +199,34 @@ object ADTRepos {
 		}
 
 	}
+
+	fun saveSelectorNames(dataConstructors: org.abs_models.frontend.ast.List<DataConstructor>){
+		dataConstructors.forEach {
+			var count = 0
+			it.constructorArgList.forEach{
+
+				constrArg ->
+			if(constrArg.selectorName != null) {
+				if(constrArg.selectorName.name in selectorNames || constrArg.selectorName.name in omonymousSelectorsMap) {
+					if (constrArg.selectorName.name !in omonymousSelectorsMap)
+						omonymousSelectorsMap[constrArg.selectorName.name] = mutableListOf(it)
+					selectorNames.remove(constrArg.selectorName.name)
+				} else
+				 	selectorNames[constrArg.selectorName.name] =  constrArg.type
+			}else{
+				anonymousSelectorNames[it.qualifiedName+"_"+count] =  constrArg.type
+			}
+				count++
+			}
+			dataConstructurMap[it.qualifiedName] = it
+		}
+	}
+
+	fun getParameterMapSelector(parametricType: Type, term: Term) : Map<TypeParameter, Type> {
+		return getMapTypes(listOf(parametricType), listOf(term))
+	}
+
+
 	fun libPrefix(type: String): String {
 		return when {
 			type == "Unbound Type" -> "UNBOUND"
@@ -195,7 +235,6 @@ object ADTRepos {
 			else -> "ABS.StdLib.Int"
 		}
 	}
-
 }
 
 object FunctionRepos{
@@ -291,7 +330,7 @@ object FunctionRepos{
 	}
 
 	fun concretizeFunctionTosSMT() : String{
-		val list = concreteParametricNameSMT.keys. map { Pair(it.first, it.second)}
+		val list = concreteParametricNameSMT.keys.filter { it.first !in ADTRepos.selectorNames }. map { Pair(it.first, it.second)}
 		list.forEach { concretizeFunctionToSMT(it.first, it.second) }
 		val sigsDefs = concreteFunctionsToSMT.map { it.value }.toMap()
 		if (sigsDefs.isNotEmpty())
@@ -303,7 +342,7 @@ object FunctionRepos{
 		if(function.name !in parametricFunctions)
 			throw Exception("Function ${function.name} not defined")
 		else {
-			val map = getMapTypes(parametricFunctions[function.name]!!.params.toList(), function.params)
+			val map = getMapParametricTypes(parametricFunctions[function.name]!!.params.toList(), function.params)
 			val newMap = (parametricFunctions[function.name] as ParametricFunctionDecl).typeParameterList.associate{
 				Pair(it.type as TypeParameter,map[it.type as TypeParameter]!!)
 			}
@@ -472,13 +511,17 @@ data class Repository(val model : Model?,
     }
 }
 
-fun getMapTypes(parametricTypes:List<ParamDecl>, concreteType:List<Term>): Map<TypeParameter,Type>{
+fun getMapTypes(parametricTypes:List<Type>, concreteType:List<Term>): Map<TypeParameter,Type>{
 	val zip = parametricTypes.zip(concreteType)
 	val map = zip.map {
-		getMapType(it.first.type, getReturnType(it.second))
+		getMapType(it.first, getReturnType(it.second))
 	}
 	val sequence = map.asSequence()
 	return sequence.flatMap { it.asSequence() }.groupBy({ it.key }, { it.value }).mapValues { entry -> entry.value.first() }
+}
+
+fun getMapParametricTypes(parametricTypes:List<ParamDecl>, concreteType:List<Term>): Map<TypeParameter,Type>{
+	return getMapTypes(parametricTypes.map{it.type}, concreteType)
 }
 
 fun getMapType(parametricType:Type, concreteType:Type) : Map<TypeParameter,Type>{

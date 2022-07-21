@@ -893,26 +893,16 @@ fun getReturnType(term: Term) : Type {
     else if (term is Function) {
         if(term.name.startsWith("NEW") || term.name in setOf("length"))
             return ADTRepos.model!!.intType
-        if(term.name in setOf( "contains","emptyMap"))
-            return ADTRepos.model!!.boolType
-        if(term.name == "toString" || term.name.startsWith('\"'))
-            return ADTRepos.model!!.stringType
-        if(term.name == "map"){
-            val parametricDataType = ADTRepos.parametricDataTypeDeclsMap["ABS.StdLib.Map"]!!.type as DataTypeType
-            val firstElemOfList = (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0) as DataTypeType
-            val typeA  = firstElemOfList.getTypeArg(0)
-            val typeB  = firstElemOfList.getTypeArg(1)
-            return applyBinding(parametricDataType, parametricDataType.typeArgs.zip(listOf(typeA,typeB)).associate { Pair(it.first as TypeParameter, it.second) })
+
+        if(term.name in FunctionRepos.parametricFunctions){
+            val parameterMap = FunctionRepos.getParameterMap(term)
+            return applyBinding(FunctionRepos.parametricFunctions[term.name]!!.type, parameterMap)
+        }
+        if(term.name in ADTRepos.anonymousSelectorNames){
+            val parameterMap = ADTRepos.getParameterMapSelector(ADTRepos.anonymousSelectorNames[term.name]!!, term.params[0])
+            return applyBinding(ADTRepos.anonymousSelectorNames[term.name]!!, parameterMap)
         }
 
-        if(term.name in setOf("ABS.StdLib.Cons_0","ABS.StdLib.Insert_0", "fst","fstT","head", "appendright","concatenate", "nth"))
-            return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(0)
-        if(term.name in setOf("snd","sndT","lookup"))
-            return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(1)
-        if(term.name == "trdT")
-            return (getReturnType(term.params[0]) as DataTypeType).getTypeArg(2)
-        if(term.name in setOf("ABS.StdLib.Cons_1", "ABS.StdLib.Insert_1", "ABS.StdLib.InsertAssoc_1","tail", "list", "without"))
-            return (getReturnType(term.params[0]) as DataTypeType)
         if (term.name in arithFunction ){
             val left = getReturnType(term.params[0])
             val right = getReturnType(term.params[1])

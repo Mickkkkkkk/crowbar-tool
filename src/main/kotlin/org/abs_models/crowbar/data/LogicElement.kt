@@ -64,6 +64,15 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
             return name
         }
         val list = params.fold("") { acc, nx -> acc + " ${nx.toSMT()}" }
+
+        if(name in ADTRepos.selectorNames){
+            if(params[0] is DataTypeConst) {
+                val arg = params[0] as DataTypeConst
+                return getSMT(getSelectorName(name, arg.name), list)
+            }else return getSMT(name, list)
+        }
+
+
         if(name in FunctionRepos.parametricFunctions)
             return getSMT(FunctionRepos.concretizeNameToSMT(this), list)
         if(name in FunctionRepos.genericFunctions) {
@@ -111,7 +120,7 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
         var count = 0;
 
         params.forEach {
-            val functionName = "${name}_${count++}"
+            val functionName = getSelectorName(getConstructorSafely(name), count++)
 
             when(it) {
                 is Placeholder -> mapMatch[it] = listOf(functionName)
@@ -129,7 +138,7 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
         var count = 0;
 
         params.forEach {
-            val functionName = "${name}_${count++}"
+            val functionName = getSelectorName(getConstructorSafely(name), count++)
 
             when(it) {
                 is DataTypeConst -> it.concreteParamsToSMT().forEach { mapping ->
@@ -168,7 +177,7 @@ data class DataTypeConst(val name : String, val concrType: Type?, val params : L
 }
 
 fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set<String>): Formula {
-    var countParameter = 0
+    var count = 0
     return branchTerm.params.foldRight(
         if(branchTerm.concrType!!.isBoolType)
             Eq(match, branchTerm)
@@ -176,7 +185,7 @@ fun extractPatternMatching(match: Term, branchTerm: DataTypeConst, freeVars: Set
             Is(branchTerm.name, match)
 
     ) { nx, acc: Formula ->
-        val parameter = Function("${branchTerm.name}_${countParameter++}", listOf(match))
+        val parameter = Function(getSelectorName(branchTerm.name, count++), listOf(match))
         And(
             acc,
             if (nx is DataTypeConst) {
@@ -711,16 +720,15 @@ fun bindTerms(term1:Term, term2: Term):Pair<Term,Term>{
 
 
 fun getFunctionForDataTypeConstElem(dataTypeConst: DataTypeConst, elem : Term) : List<String>{
-    var index = -1
-    index = (dataTypeConst.params.indexOf(elem))
-    if (index != -1) return  listOf("${dataTypeConst.name}_$index")
+    var count = (dataTypeConst.params.indexOf(elem))
+    if (count != -1) return  listOf(getSelectorName(dataTypeConst.name, count))
     else{
         for (param in dataTypeConst.params){
-            index++
+            count++
             if(param is DataTypeConst) {
                 val innerList = getFunctionForDataTypeConstElem(param,elem)
                 if(innerList.isNotEmpty())
-                    return listOf("${dataTypeConst.name}_$index") + innerList
+                    return listOf(getSelectorName(dataTypeConst.name, count)) + innerList
             }
         }
     }
