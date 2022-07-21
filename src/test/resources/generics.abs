@@ -330,6 +330,16 @@ class ListClass(List<Type> list, Type ft){
     List<Int> withoutSomeElemFail(){
         return without(Cons(2, Cons(1, Nil)), 2);
     }
+
+    [Spec: Ensures(result)]
+    Bool isEmptyOnWrappedEmptyListSuccess(){
+        return isEmpty(list(Nil));
+    }
+
+    [Spec: Ensures(result)]
+    Bool isEmptyOnWrappedEmptyListFail(){
+        return isEmpty(list(Cons(1,Nil)));
+    }
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){
@@ -406,6 +416,16 @@ class SetClass{
     [Ensures(result)]
     Bool callCustomContainsCallingLibContainsFail(){
         return customContainsCallingContains(Insert(1,Insert(2,Insert(3,EmptySet))), 6);
+    }
+
+    [Spec: Ensures(result)]
+    Bool callContainsWrappedSetSuccess(){
+        return contains(set(Cons(1,Nil)), 1);
+    }
+
+    [Spec: Ensures(result)]
+    Bool callContainsWrappedSetFail(){
+        return contains(set(Cons(1,Nil)), 2);
     }
 }
 

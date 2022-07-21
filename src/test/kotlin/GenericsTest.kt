@@ -193,6 +193,13 @@ class GenericsTest : CrowbarTest() {
                 val withoutSomeElemFail = classDecl.extractMethodNode(postInv, "withoutSomeElemFail", repos)
                 executeNode(withoutSomeElemFail, repos, postInv) shouldBe false
 
+
+                val isEmptyOnWrappedEmptyListSuccess = classDecl.extractMethodNode(postInv, "isEmptyOnWrappedEmptyListSuccess", repos)
+                executeNode(isEmptyOnWrappedEmptyListSuccess, repos, postInv) shouldBe true
+
+                val isEmptyOnWrappedEmptyListFail = classDecl.extractMethodNode(postInv, "isEmptyOnWrappedEmptyListFail", repos)
+                executeNode(isEmptyOnWrappedEmptyListFail, repos, postInv) shouldBe false
+
             }
 
             "$smt triple"{
@@ -235,7 +242,7 @@ class GenericsTest : CrowbarTest() {
                 val trdTParamSuccess = classDecl.extractMethodNode(postInv, "trdTParamSuccess", repos)
                 executeNode(trdTParamSuccess, repos, postInv) shouldBe true
 
-            }//
+            }
 
             "$smt set"{
                 smtPath = smt
@@ -248,6 +255,12 @@ class GenericsTest : CrowbarTest() {
 
                 val callCustomContainsCallingLibContainsFail = classDecl.extractMethodNode(postInv, "callCustomContainsCallingLibContainsFail", repos)
                 executeNode(callCustomContainsCallingLibContainsFail, repos, postInv) shouldBe false
+
+                val callContainsWrappedSetSuccess = classDecl.extractMethodNode(postInv, "callContainsWrappedSetSuccess", repos)
+                executeNode(callContainsWrappedSetSuccess, repos, postInv) shouldBe true
+
+                val callContainsWrappedSetFail = classDecl.extractMethodNode(postInv, "callContainsWrappedSetFail", repos)
+                executeNode(callContainsWrappedSetFail, repos, postInv) shouldBe false
 
             }
 

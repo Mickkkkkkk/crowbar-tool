@@ -241,10 +241,10 @@ object FunctionRepos{
 
 	val builtInFunctionNames = setOf(
 		"abs",
-		"head","tail", "appendright", "concatenate", "length", "list", "nth", "without",//list
+		"head","tail", "appendright", "concatenate", "length", "list", "nth", "without","isEmpty",//list
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
-		"contains", //set
+		"contains", "set", "insertElement",//set
 		"emptyMap", "lookup", "map", //map
 		"println", "toString" //String
 	)
