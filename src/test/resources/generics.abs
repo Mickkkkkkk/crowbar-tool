@@ -109,6 +109,15 @@ class MaybeClass(Maybe<Int> f, Type f1, Int fi) {
         return Nothing;
     }
 
+    [Ensures(fromJust(result) == 1)]
+    Maybe<Int> fromJustOnJustSuccess (){
+        return Just(1);
+    }
+
+    [Ensures(fromJust(fromJust(result)) == 1)]
+    Maybe<Maybe<Int>> fromJustOnWrappedJustSuccess (){
+        return Just(Just(1));
+    }
 }
 
 class PairClass(Pair<Type, Bool> f, Type f1, Type f2) {

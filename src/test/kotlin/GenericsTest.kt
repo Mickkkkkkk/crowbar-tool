@@ -26,7 +26,7 @@ class GenericsTest : CrowbarTest() {
 
                 val updateFieldWrapSuccess = classDecl.extractMethodNode(postInv, "updateFieldWrapSuccess", repos)
                 executeNode(updateFieldWrapSuccess, repos, postInv) shouldBe true
-                //caseSuccess
+
                 val trivialFunctionSuccess = classDecl.extractMethodNode(postInv, "trivialFunctionSuccess", repos)
                 executeNode(trivialFunctionSuccess, repos, postInv) shouldBe true
 
@@ -45,6 +45,13 @@ class GenericsTest : CrowbarTest() {
 
                 val returnNothingWrapWrapPostSimpleSuccess = classDecl.extractMethodNode(postInv, "returnNothingWrapWrapPostSimpleSuccess", repos)
                 executeNode(returnNothingWrapWrapPostSimpleSuccess, repos, postInv) shouldBe true
+
+                val fromJustOnJustSuccess = classDecl.extractMethodNode(postInv, "fromJustOnJustSuccess", repos)
+                executeNode(fromJustOnJustSuccess, repos, postInv) shouldBe true
+
+                val fromJustOnWrappedJustSuccess = classDecl.extractMethodNode(postInv, "fromJustOnWrappedJustSuccess", repos)
+                executeNode(fromJustOnWrappedJustSuccess, repos, postInv) shouldBe true
+
             }
 
             "$smt pair"{
