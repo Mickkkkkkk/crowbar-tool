@@ -899,9 +899,12 @@ fun getReturnType(term: Term) : Type {
             return applyBinding(FunctionRepos.parametricFunctions[term.name]!!.type, parameterMap)
         }
         if(term.name in ADTRepos.anonymousSelectorNames){
-            val parameterMap = ADTRepos.getParameterMapSelector(ADTRepos.anonymousSelectorNames[term.name]!!, term.params[0])
+            val parameterMap = ADTRepos.getParameterMapSelector(term.params[0])
             return applyBinding(ADTRepos.anonymousSelectorNames[term.name]!!, parameterMap)
         }
+
+        if(term.name.startsWith('\"'))
+            return ADTRepos.model!!.stringType
 
         if (term.name in arithFunction ){
             val left = getReturnType(term.params[0])

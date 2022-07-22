@@ -40,6 +40,13 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
 
     override fun toSMT(indent:String): String {
 
+
+        if(name == ">" && getReturnType(params[0]).isStringType) {
+            return And(Not(Predicate("str.<", params)), Not(Predicate("=", params))).toSMT(indent)
+        }
+        if(name == "<" && getReturnType(params[0]).isStringType)
+                return Predicate("str.<", params).toSMT(indent)
+
         if(name == "valueOf") {
             if(params[0] is ProgVar)
                 return "(valueOf_${
@@ -348,6 +355,10 @@ class Predicate(val name : String, val params : List<Term> = emptyList()) : Form
         )
     }
 
+    override fun toString(): String {
+        return "Predicate($name, ${ params.map { it.toString() } })"
+    }
+
     override fun toSMT(indent:String) : String {
         if(params.isEmpty()) return name
         val list = if(name == "=") {
@@ -524,13 +535,8 @@ fun exprToForm(input : Expr, specialKeyword : String="NONE") : Formula {
             } else
                 throw Exception("Special keywords must have one argument, actual arguments size:" + input.e.size)
         }
-//        return if(input.op != "=") Predicate(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
-//            else{
-//
-//            val params = input.e.map { ex -> exprToTerm(ex, specialKeyword) }
-//            val boundedTerms = boundTerms(params[0],params[1])
-//                Predicate(input.op, listOf(boundedTerms.first,boundedTerms.second))
-//            }
+        if(FunctionRepos.isFunctionName(input.op))
+            return Predicate("=",  listOf(Function(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) }), Function("true")))
         return Predicate(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
     }
     if(input is Field || input is ProgVar || input is Const)

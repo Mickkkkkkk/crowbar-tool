@@ -222,8 +222,8 @@ object ADTRepos {
 		}
 	}
 
-	fun getParameterMapSelector(parametricType: Type, term: Term) : Map<TypeParameter, Type> {
-		return getMapTypes(listOf(parametricType), listOf(term))
+	fun getParameterMapSelector(term: Term) : Map<TypeParameter, Type> {
+		return getMapTypes(listOf(getReturnType(term).decl.type), listOf(term))
 	}
 
 
@@ -249,6 +249,7 @@ object FunctionRepos{
 		"println", "toString" //String
 	)
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
+	val simpleNameFunctions : MutableSet<String> = mutableSetOf()
 	val genericFunctions = mutableMapOf<String,Pair<DataTypeType, List<Type>>>()
 	val parametricFunctions = mutableMapOf<String,FunctionDecl>()
 	val concreteParametricNameSMT = mutableMapOf<Pair<String,String>,String>()
@@ -278,6 +279,7 @@ object FunctionRepos{
 
 	fun init(model: Model) {
 		known.clear()
+		simpleNameFunctions.clear()
 		genericFunctions.clear()
 		parametricFunctions.clear()
 		concreteParametricNameSMT.clear()
@@ -299,6 +301,8 @@ object FunctionRepos{
 		initParametricFunctions()
 	}
 
+	fun isFunctionName(name: String) = name in known || name in simpleNameFunctions
+
 	private fun initFunctionDef(fDecl: FunctionDecl) {
 		if(fDecl.functionDef is ExpFunctionDef || fDecl.functionDef is BuiltinFunctionDef && fDecl.name in builtInFunctionNames ){
 			known[fDecl.qualifiedName] = fDecl
@@ -307,6 +311,7 @@ object FunctionRepos{
 			System.err.println("${fDecl.functionDef} not supported")
 			exitProcess(-1)
 		}
+		simpleNameFunctions.addAll(known.map { it.value.name }.toMutableSet())
 	}
 	fun extractAll(usedType: KClass<out DeductType>) : List<Pair<String,SymbolicNode>> {
 		return known.filter { hasContract(it.value) }.map { Pair(it.key,it.value.exctractFunctionNode(usedType)) }

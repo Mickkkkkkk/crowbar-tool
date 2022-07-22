@@ -250,19 +250,25 @@ class GenericsTest : CrowbarTest() {
                 val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
                 val classDecl = model.extractClassDecl("Generics", "SetClass")
 
-                val callCustomContainsCallingLibContainsSuccess = classDecl.extractMethodNode(postInv, "callCustomContainsCallingLibContainsSuccess", repos)
+                val callCustomContainsCallingLibContainsSuccess =
+                    classDecl.extractMethodNode(postInv, "callCustomContainsCallingLibContainsSuccess", repos)
                 executeNode(callCustomContainsCallingLibContainsSuccess, repos, postInv) shouldBe true
 
-                val callCustomContainsCallingLibContainsFail = classDecl.extractMethodNode(postInv, "callCustomContainsCallingLibContainsFail", repos)
+                val callCustomContainsCallingLibContainsFail =
+                    classDecl.extractMethodNode(postInv, "callCustomContainsCallingLibContainsFail", repos)
                 executeNode(callCustomContainsCallingLibContainsFail, repos, postInv) shouldBe false
 
-                val callContainsWrappedSetSuccess = classDecl.extractMethodNode(postInv, "callContainsWrappedSetSuccess", repos)
+                val callContainsWrappedSetSuccess =
+                    classDecl.extractMethodNode(postInv, "callContainsWrappedSetSuccess", repos)
                 executeNode(callContainsWrappedSetSuccess, repos, postInv) shouldBe true
 
-                val callContainsWrappedSetFail = classDecl.extractMethodNode(postInv, "callContainsWrappedSetFail", repos)
+                val callContainsWrappedSetFail =
+                    classDecl.extractMethodNode(postInv, "callContainsWrappedSetFail", repos)
                 executeNode(callContainsWrappedSetFail, repos, postInv) shouldBe false
-
             }
+
+
+
 
             "$smt map"{
                 smtPath = smt
@@ -314,12 +320,31 @@ class GenericsTest : CrowbarTest() {
 
         }
 
-        "z3 mapWrappingWithLookupFail"{
+        "$z3 onlyZ3-mapWrappingWithLookupFail"{
             smtPath = z3
             val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
             val classDecl = model.extractClassDecl("Generics", "MapClass")
             val mapWrappingWithLookupFail = classDecl.extractMethodNode(postInv, "mapWrappingWithLookupFail", repos)
             executeNode(mapWrappingWithLookupFail, repos, postInv) shouldBe false
+        }
+
+        "$z3 onlyZ3-string-set"{
+            smtPath = z3
+
+            val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
+            val classDecl = model.extractClassDecl("Generics", "SetClass")
+
+            val containingStringSetStringSuccess = classDecl.extractMethodNode(postInv, "containingStringSetStringSuccess", repos)
+            executeNode(containingStringSetStringSuccess, repos, postInv) shouldBe true
+
+            val containingStringSetStringFail = classDecl.extractMethodNode(postInv, "containingStringSetStringFail", repos)
+            executeNode(containingStringSetStringFail, repos, postInv) shouldBe false
+
+            val nonContainingStringSetStringSuccess = classDecl.extractMethodNode(postInv, "nonContainingStringSetStringSuccess", repos)
+            executeNode(nonContainingStringSetStringSuccess, repos, postInv) shouldBe true
+
+            val nonContainingStringSetStringFail = classDecl.extractMethodNode(postInv, "nonContainingStringSetStringFail", repos)
+            executeNode(nonContainingStringSetStringFail, repos, postInv) shouldBe false
         }
     }
 }

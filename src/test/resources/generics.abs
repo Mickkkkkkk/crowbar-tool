@@ -427,6 +427,29 @@ class SetClass{
     Bool callContainsWrappedSetFail(){
         return contains(set(Cons(1,Nil)), 2);
     }
+
+    [Spec: Ensures(contains(result, "b"))]
+    Set<String> containingStringSetStringSuccess(){
+        return set(Cons("A",Cons("b", Cons("C", Nil))));
+    }
+
+
+    [Spec: Ensures(!contains(result, "b"))]
+    Set<String> containingStringSetStringFail(){
+        return set(Cons("A",Cons("b", Cons("C", Nil))));
+    }
+
+    [Spec: Ensures(!contains(result, "c"))]
+    Set<String> nonContainingStringSetStringSuccess(){
+        return set(Cons("A",Cons("b", Cons("C", Nil))));
+    }
+
+
+    [Spec: Ensures(contains(result, "c"))]
+    Set<String> nonContainingStringSetStringFail(){
+        return set(Cons("A",Cons("b", Cons("C", Nil))));
+    }
+
 }
 
 class MapClass{
