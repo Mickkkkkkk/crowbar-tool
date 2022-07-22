@@ -265,6 +265,25 @@ class GenericsTest : CrowbarTest() {
                 val callContainsWrappedSetFail =
                     classDecl.extractMethodNode(postInv, "callContainsWrappedSetFail", repos)
                 executeNode(callContainsWrappedSetFail, repos, postInv) shouldBe false
+
+                val checkExistingKeySuccess =
+                    classDecl.extractMethodNode(postInv, "checkExistingKeySuccess", repos)
+                executeNode(checkExistingKeySuccess, repos, postInv) shouldBe true
+
+                val checkExistingKeyFail =
+                    classDecl.extractMethodNode(postInv, "checkExistingKeyFail", repos)
+                executeNode(checkExistingKeyFail, repos, postInv) shouldBe false
+
+                val checkNonExistingKeySuccess =
+                    classDecl.extractMethodNode(postInv, "checkNonExistingKeySuccess", repos)
+                executeNode(checkNonExistingKeySuccess, repos, postInv) shouldBe true
+
+                val checkNonExistingKeyFail =
+                    classDecl.extractMethodNode(postInv, "checkNonExistingKeyFail", repos)
+                executeNode(checkNonExistingKeyFail, repos, postInv) shouldBe false
+
+
+
             }
 
 

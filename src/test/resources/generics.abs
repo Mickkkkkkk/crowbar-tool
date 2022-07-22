@@ -450,6 +450,29 @@ class SetClass{
         return set(Cons("A",Cons("b", Cons("C", Nil))));
     }
 
+    [Ensures(result)]
+    Bool checkExistingKeySuccess (){
+        return contains(keys(map(Cons(Pair(5,2),Cons(Pair(2,9), Nil)))), 2);
+    }
+
+
+    [Ensures(!result)]
+    Bool checkExistingKeyFail (){
+        return contains(keys(map(Cons(Pair(5,2),Cons(Pair(2,9), Nil)))), 2);
+    }
+
+
+    [Ensures(!result)]
+    Bool checkNonExistingKeySuccess (){
+        return contains(keys(map(Cons(Pair(5,2),Cons(Pair(2,9), Nil)))), 9);
+    }
+
+
+    [Ensures(result)]
+    Bool checkNonExistingKeyFail (){
+        return contains(keys(map(Cons(Pair(5,2),Cons(Pair(2,9), Nil)))), 9);
+    }
+
 }
 
 class MapClass{
