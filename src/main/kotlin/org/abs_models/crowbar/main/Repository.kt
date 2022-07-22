@@ -246,7 +246,7 @@ object FunctionRepos{
 		"fstT", "sndT","trdT", //triple
 		"contains", "set", "insertElement", "keys",//set
 		"emptyMap", "lookup", "map", //map
-		"println", "toString" //String
+		"println", "toString", "intToString", "readln" //String
 	)
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val simpleNameFunctions : MutableSet<String> = mutableSetOf()
