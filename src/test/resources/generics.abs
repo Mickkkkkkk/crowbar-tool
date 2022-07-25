@@ -591,6 +591,11 @@ class MapClass{
         return lookupUnsafe(map(Cons(Pair(2,1), Cons(Pair(3,2), Nil))), 2);
     }
 
+    [Ensures(lookup(result, 4) == Just(2))]
+    Map<Int,Int> putSimpleSuccess (){
+        return put(EmptyMap, 4,2);
+    }
+
 }
 
 {

@@ -354,6 +354,9 @@ class GenericsTest : CrowbarTest() {
 
                 val lookupUnsafeExistingMappingSuccess = classDecl.extractMethodNode(postInv, "lookupUnsafeExistingMappingSuccess", repos)
                 executeNode(lookupUnsafeExistingMappingSuccess, repos, postInv) shouldBe true
+
+                val putSimpleSuccess = classDecl.extractMethodNode(postInv, "putSimpleSuccess", repos)
+                executeNode(putSimpleSuccess, repos, postInv) shouldBe true
                 }
 
 

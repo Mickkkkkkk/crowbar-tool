@@ -245,7 +245,7 @@ object FunctionRepos{
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
 		"contains", "set", "insertElement", "keys", "union",//set
-		"emptyMap", "lookup", "map", "lookupUnsafe", //map
+		"emptyMap", "lookup", "map", "lookupUnsafe", "put", //map
 		"fromJust", //maybe
 		"println", "toString", "intToString", "readln" //String
 	)
