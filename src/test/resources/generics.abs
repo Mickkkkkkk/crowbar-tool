@@ -558,6 +558,12 @@ class MapClass{
         return lookup(map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil))), 1);
     }
 
+
+    [Ensures(result == 1)]
+    Int lookupUnsafeExistingMappingSuccess (){
+        return lookupUnsafe(map(Cons(Pair(2,1), Cons(Pair(3,2), Nil))), 2);
+    }
+
 }
 
 {

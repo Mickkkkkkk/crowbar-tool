@@ -340,6 +340,9 @@ class GenericsTest : CrowbarTest() {
 
                 val mapWrappingWithLookupSuccess = classDecl.extractMethodNode(postInv, "mapWrappingWithLookupSuccess", repos)
                 executeNode(mapWrappingWithLookupSuccess, repos, postInv) shouldBe true
+
+                val lookupUnsafeExistingMappingSuccess = classDecl.extractMethodNode(postInv, "lookupUnsafeExistingMappingSuccess", repos)
+                executeNode(lookupUnsafeExistingMappingSuccess, repos, postInv) shouldBe true
                 }
 
 
