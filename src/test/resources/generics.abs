@@ -482,6 +482,33 @@ class SetClass{
         return contains(keys(map(Cons(Pair(5,2),Cons(Pair(2,9), Nil)))), 9);
     }
 
+    [Ensures(result == set(Cons(3,Cons(2,Cons(8,Cons(12,Nil))))))]
+    Set<Int> unionSetSuccess (){
+        Set<Int> s1 = set(Cons(3,Cons(2,Nil)));
+        Set<Int> s2 = set(Cons(8,Cons(12,Nil)));
+        return union(s1,s2);
+    }
+
+    [Ensures(result == set(Cons(10,Cons(2,Cons(8,Cons(12,Nil))))))]
+    Set<Int> unionSetFail (){
+        Set<Int> s1 = set(Cons(3,Cons(2,Nil)));
+        Set<Int> s2 = set(Cons(8,Cons(12,Nil)));
+        return union(s1,s2);
+    }
+
+    [Ensures(result)]
+    Bool symmetricUnionSuccess (){
+        Set<Int> s1 = set(Cons(3,Cons(2,Nil)));
+        Set<Int> s2 = set(Cons(8,Cons(12,Nil)));
+        return union(s1,s2) == union(s2,s1);
+    }
+
+    [Ensures(result == set(Cons(2,Nil)))]
+    Set<Int> singletonSuccess (){
+        Set<Int> s1 = set(Cons(2,Cons(2,Cons(2,Cons(2,Nil)))));
+        Set<Int> s2 = set(Cons(2,Cons(2,Cons(2,Nil))));
+        return union(s1,s2);
+    }
 }
 
 class MapClass{

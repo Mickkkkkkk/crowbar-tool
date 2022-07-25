@@ -244,7 +244,7 @@ object FunctionRepos{
 		"head","tail", "appendright", "concatenate", "length", "list", "nth", "without","isEmpty",//list
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
-		"contains", "set", "insertElement", "keys",//set
+		"contains", "set", "insertElement", "keys", "union",//set
 		"emptyMap", "lookup", "map", "lookupUnsafe", //map
 		"fromJust", //maybe
 		"println", "toString", "intToString", "readln" //String

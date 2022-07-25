@@ -289,7 +289,18 @@ class GenericsTest : CrowbarTest() {
                     classDecl.extractMethodNode(postInv, "checkNonExistingKeyFail", repos)
                 executeNode(checkNonExistingKeyFail, repos, postInv) shouldBe false
 
-
+                val unionSetSuccess =
+                    classDecl.extractMethodNode(postInv, "unionSetSuccess", repos)
+                executeNode(unionSetSuccess, repos, postInv) shouldBe true
+                val unionSetFail =
+                    classDecl.extractMethodNode(postInv, "unionSetFail", repos)
+                executeNode(unionSetFail, repos, postInv) shouldBe false
+                val symmetricUnionSuccess =
+                    classDecl.extractMethodNode(postInv, "symmetricUnionSuccess", repos)
+                executeNode(symmetricUnionSuccess, repos, postInv) shouldBe true
+                val singletonSuccess =
+                    classDecl.extractMethodNode(postInv, "singletonSuccess", repos)
+                executeNode(singletonSuccess, repos, postInv) shouldBe true
 
             }
 

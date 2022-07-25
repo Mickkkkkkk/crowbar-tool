@@ -663,6 +663,9 @@ fun bindGenerics(bindingType: Type, unboundTerm: Term): Term {
         return ProgVar(unboundTerm.name, bindingType)
     if (unboundTerm is Field)
         return Field(unboundTerm.name, bindingType)
+    if(unboundTerm is Case)
+        return Case(unboundTerm.match, unboundTerm.expectedType, unboundTerm.branches.map {
+            BranchTerm(it.matchTerm, bindGenerics(bindingType,it.branch)) },unboundTerm.freeVars, unboundTerm.expectedTypeConcr)
     val bindingTypeHasArgs = bindingType is DataTypeType && bindingType.hasTypeArgs()
     val unboundTermHasArgs =
         unboundTerm is DataTypeConst && unboundTerm.concrType is DataTypeType && unboundTerm.concrType.hasTypeArgs()
