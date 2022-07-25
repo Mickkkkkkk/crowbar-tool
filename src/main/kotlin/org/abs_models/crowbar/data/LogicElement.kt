@@ -50,7 +50,7 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
         if(name == "valueOf") {
             if(params[0] is ProgVar)
                 return "(valueOf_${
-                    ADTRepos.libPrefix(((params[0] as ProgVar).concrType as DataTypeType).typeArgs[0].qualifiedName).replace(".", "_")} ${(params[0] as ProgVar).name})"
+                    ADTRepos.libPrefix(translateType(((params[0] as ProgVar).concrType as DataTypeType).typeArgs[0])).replace(".", "_")} ${(params[0] as ProgVar).name})"
             else
                 throw Exception("parameter of \"valueOf\" expects Progvar or Future, actual value: ${params[0]}")
         }
