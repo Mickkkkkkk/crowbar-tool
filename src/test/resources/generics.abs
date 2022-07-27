@@ -349,6 +349,16 @@ class ListClass(List<Type> list, Type ft){
     Bool isEmptyOnWrappedEmptyListFail(){
         return isEmpty(list(Cons(1,Nil)));
     }
+
+    [Ensures(head(result) == 1)]
+    List<Int> listLiteralsSuccess (){
+        return list[1,2,3];
+    }
+
+    [Ensures(head(result) == 2)]
+    List<Int> listLiteralsFail (){
+        return list[1,2,3];
+    }
 }
 
 class TripleClass(Triple<Type,Int,Bool> triple,Int fi){

@@ -207,6 +207,12 @@ class GenericsTest : CrowbarTest() {
                 val isEmptyOnWrappedEmptyListFail = classDecl.extractMethodNode(postInv, "isEmptyOnWrappedEmptyListFail", repos)
                 executeNode(isEmptyOnWrappedEmptyListFail, repos, postInv) shouldBe false
 
+                val listLiteralsSuccess = classDecl.extractMethodNode(postInv, "listLiteralsSuccess", repos)
+                executeNode(listLiteralsSuccess, repos, postInv) shouldBe true
+
+                val listLiteralsFail = classDecl.extractMethodNode(postInv, "listLiteralsFail", repos)
+                executeNode(listLiteralsFail, repos, postInv) shouldBe false
+
             }
 
             "$smt triple"{

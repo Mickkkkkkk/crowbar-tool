@@ -409,6 +409,13 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
             val expr = translateExpression(input.exp, returnType, subst, fullExpr,map)
             Pair(ImplementsExpr(expr.first, applyBinding(input.interfaceTypeUse.type, map)), expr.second as List<org.abs_models.crowbar.data.Stmt>)
         }
+        is ListLiteral -> {
+                Pair(input.pureExps.toList().foldRight(DataTypeExpr("ABS.StdLib.Nil",input.type.qualifiedName, input.type, listOf())){
+                    literalExp:PureExp,dataTypeExpr:DataTypeExpr ->
+                    val expr = translateExpression(literalExp, returnType, subst, fullExpr,map).first
+                    DataTypeExpr("ABS.StdLib.Cons",input.type.qualifiedName, input.type, listOf(expr,dataTypeExpr))
+                }, emptyList())
+        }
         else -> throw Exception("Translation of ${input::class} not supported, term is $input" )
     }
 
