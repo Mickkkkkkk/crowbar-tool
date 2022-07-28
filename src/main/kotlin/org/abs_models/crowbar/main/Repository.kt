@@ -257,7 +257,8 @@ object FunctionRepos{
 		"fstT", "sndT","trdT", //triple
 		"contains", "set", "insertElement", "keys", "union",//set
 		"emptyMap", "lookup", "map", "lookupUnsafe", "put", //map
-		"fromJust" //maybe
+		"fromJust", //maybe
+		"toString"
 
 	) + SMTbuiltinFunctions.keys + builtinFunctions.keys
 
@@ -268,9 +269,11 @@ object FunctionRepos{
 	val concreteParametricNameSMT = mutableMapOf<Pair<String,String>,String>()
 	val parametricFunctionTypeMap = mutableMapOf<Pair<String,String>,Map<TypeParameter,Type>>()
 	val concreteFunctionsToSMT = mutableMapOf<Pair<String,String>,Pair<String,String>>()
+	val concreteBuiltinFunctionsToSMT = mutableMapOf<Pair<String,String>,FunDecl>()
 
 
-    fun isKnown(str: String) = known.containsKey(str)
+
+	fun isKnown(str: String) = known.containsKey(str)
     fun get(str: String) = known.getValue(str)
 	fun hasContracts() = known.filter { hasContract(it.value) }.any()
 	private fun contracts() = known.filter { hasContract(it.value) }
@@ -381,40 +384,63 @@ object FunctionRepos{
 		return concreteParametricNameSMT[pairFunctionConcreteParamsTypes]!!
 	}
 
+	fun concretizeBuiltinFunctionToSMT(name:String, paramTypes: String){
+		if(Pair(name,paramTypes) !in parametricFunctionTypeMap )
+			throw Exception("Function $name with parameters of types ${paramTypes.replace("=", " ")} not defined")
+
+		val map = parametricFunctionTypeMap[Pair(name,paramTypes)]!!
+		val functionDecl = this.parametricFunctions[name]!!
+		val type = applyBinding( functionDecl.type, map)
+
+		val concreteFunctionName =
+			"${name}_${map.values.joinToString("_") { translateType(it) }}"
+
+		concreteBuiltinFunctionsToSMT[Pair(name,paramTypes)] = FunDecl(concreteFunctionName, functionDecl.params.map { translateType( applyBinding(it.type, map)) }, translateType(type))
+	}
+
 	fun concretizeFunctionToSMT(name:String, paramTypes:String) {
 		if(Pair(name,paramTypes) !in parametricFunctionTypeMap )
 			throw Exception("Function $name with parameters of types ${paramTypes.replace("=", " ")} not defined")
 
 		val map = parametricFunctionTypeMap[Pair(name,paramTypes)]!!
 		val functionDecl = this.parametricFunctions[name]!!
+		if(functionDecl.functionDef is BuiltinFunctionDef)
+			concretizeBuiltinFunctionToSMT(name, paramTypes)
+		else {
+			val concreteFunctionName =
+				"${name}_${map.values.joinToString("_") { translateType(it) }}"
+			val definition = functionDecl.functionDef.getChild(0) as PureExp
+			val term = exprToTerm(
+				translateExpression(
+					definition,
+					applyBinding(definition.type, map),
+					emptyMap(),
+					true,
+					map
+				).first
+			)
 
-		val concreteFunctionName =
-			"${name}_${map.values.joinToString("_") { translateType(it) }}"
-
-		val definition = functionDecl.functionDef.getChild(0) as PureExp
-		val term = exprToTerm(translateExpression(definition, applyBinding(definition.type, map), emptyMap(), true, map).first)
-
-		(term.iterate { it is Function  && it.name in parametricFunctions } as Set<Function>).forEach{
-			func:Function ->
+			(term.iterate { it is Function && it.name in parametricFunctions } as Set<Function>).forEach { func: Function ->
 				val funcName = func.name
 				val funcParamTypes = getParamsTypesFunction(func)
-				if(name != funcName || funcParamTypes!=paramTypes) {
+				if (name != funcName || funcParamTypes != paramTypes) {
 					concretizeNameToSMT(func)
 					concretizeFunctionToSMT(funcName, funcParamTypes)
 				}
-		}
-		val params = functionDecl.params
-		val sig = "\t($concreteFunctionName (${
-			params.fold("") { acc, nx ->
-				"$acc (${nx.name} ${
-						translateType(applyBinding(nx.type, map))
-				})"
 			}
-		})  ${translateType(applyBinding(definition.type, map))})\n"
+			val params = functionDecl.params
+			val sig = "\t($concreteFunctionName (${
+				params.fold("") { acc, nx ->
+					"$acc (${nx.name} ${
+						translateType(applyBinding(nx.type, map))
+					})"
+				}
+			})  ${translateType(applyBinding(definition.type, map))})\n"
 
-		val def = "\t${term.toSMT()}\n"
+			val def = "\t${term.toSMT()}\n"
 
-		concreteFunctionsToSMT[Pair(name,paramTypes)] =  Pair(sig, def)
+			concreteFunctionsToSMT[Pair(name, paramTypes)] = Pair(sig, def)
+		}
 	}
 
 	fun getCalledFunctionsNotInPO(functionsCalledInPO:Set<Function>) : Pair<ContractFunDecls,DirectFunDecls> {

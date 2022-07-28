@@ -76,6 +76,7 @@ fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {
     val proofObligationSMT =  proofObligation.toSMT("\t")
     val functionDecl = BlockProofElements(listOf(allFunctionsDecls.first, allFunctionsDecls.second),"FUNCTIONS").toSMT("\t")
     val concretizeFunctionTosSMT= concretizeFunctionTosSMT()
+    val concretizeBuiltinFunctionDecl = BlockProofElements(FunctionRepos.concreteBuiltinFunctionsToSMT.values.toList(), "Concrete Parametric Builtin Functions")
 
     //generation of translation for wildcards
     val wildcards: String = wildCardsConst.map { FunctionDeclSMT(it.key,it.value).toSMT("\n\t") }.joinToString("") { it }
@@ -102,6 +103,8 @@ ${headerBlock.toSMT("\t")}
     
 ; parametric functions decl
     $concretizeFunctionTosSMT
+    
+    ${concretizeBuiltinFunctionDecl.toSMT("\t")}
 ;functions declaration
     $functionDecl
 ;generic functions declaration :to be implemented and added
