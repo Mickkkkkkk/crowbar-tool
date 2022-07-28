@@ -40,6 +40,8 @@ data class Function(val name : String, val params : List<Term> = emptyList()) : 
 
     override fun toSMT(indent:String): String {
 
+        if(name in FunctionRepos.SMTbuiltinFunctions)
+            return Function(FunctionRepos.SMTbuiltinFunctions[name]!!, params).toSMT(indent)
 
         if(name == ">" && getReturnType(params[0]).isStringType) {
             return And(Not(Predicate("str.<", params)), Not(Predicate("=", params))).toSMT(indent)

@@ -36,7 +36,7 @@ val mapBuiltinFunction = mapOf(
     "hasRole" to Pair(listOf("Int", "String"), "Bool"),
     "implements" to Pair(listOf("ABS.StdLib.Int", "Interface"), "Bool"),
     "extends" to Pair(listOf("Interface", "Interface"), "Bool")
-)
+) + FunctionRepos.builtinFunctions
 
 val staticAssertions = listOf(
     Eq(Function("Unit"),Function("0")),

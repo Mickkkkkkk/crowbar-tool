@@ -239,6 +239,17 @@ object ADTRepos {
 
 object FunctionRepos{
 
+	val builtinFunctions = mapOf(
+//		"log" to Pair(listOf("ABS.StdLib.Float"), "ABS.StdLib.Float"),
+		"println" to Pair(listOf("ABS.StdLib.String"), "Int"), //Unit is constant of type Int with value 0
+		"readln" to Pair(listOf(), "ABS.StdLib.String")
+	)
+
+	val SMTbuiltinFunctions = mapOf(
+		"strlen" to "str.len",
+		"substr" to "str.substr",
+		"intToString" to "str.from_int"
+	)
 	val builtInFunctionNames = setOf(
 		"abs",
 		"head","tail", "appendright", "concatenate", "length", "list", "nth", "without","isEmpty",//list
@@ -246,9 +257,10 @@ object FunctionRepos{
 		"fstT", "sndT","trdT", //triple
 		"contains", "set", "insertElement", "keys", "union",//set
 		"emptyMap", "lookup", "map", "lookupUnsafe", "put", //map
-		"fromJust", //maybe
-		"println", "toString", "intToString", "readln" //String
-	)
+		"fromJust" //maybe
+
+	) + SMTbuiltinFunctions.keys + builtinFunctions.keys
+
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val simpleNameFunctions : MutableSet<String> = mutableSetOf()
 	val genericFunctions = mutableMapOf<String,Pair<DataTypeType, List<Type>>>()
@@ -256,6 +268,7 @@ object FunctionRepos{
 	val concreteParametricNameSMT = mutableMapOf<Pair<String,String>,String>()
 	val parametricFunctionTypeMap = mutableMapOf<Pair<String,String>,Map<TypeParameter,Type>>()
 	val concreteFunctionsToSMT = mutableMapOf<Pair<String,String>,Pair<String,String>>()
+
 
     fun isKnown(str: String) = known.containsKey(str)
     fun get(str: String) = known.getValue(str)
