@@ -537,7 +537,7 @@ fun exprToForm(input : Expr, specialKeyword : String="NONE") : Formula {
             } else
                 throw Exception("Special keywords must have one argument, actual arguments size:" + input.e.size)
         }
-        if(FunctionRepos.isFunctionName(input.op))
+        if(FunctionRepos.isFunctionName(input.op.replace("-",".")))
             return Predicate("=",  listOf(Function(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) }), Function("true")))
         return Predicate(input.op, input.e.map { ex -> exprToTerm(ex, specialKeyword) })
     }
