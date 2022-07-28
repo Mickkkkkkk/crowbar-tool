@@ -434,6 +434,9 @@ class PostInvTest : CrowbarTest() {
 				val simpleSyncCallSuccess = classDecl.extractMethodNode(postInv, "simpleSyncCallSuccess", repos)
 				executeNode(simpleSyncCallSuccess, repos, postInv) shouldBe true
 
+				val simpleDirectReturnSyncCallSuccess = classDecl.extractMethodNode(postInv, "simpleDirectReturnSyncCallSuccess", repos)
+				executeNode(simpleDirectReturnSyncCallSuccess, repos, postInv) shouldBe true
+
 				//simple success for sync call with inherited contracts
 				val syncCallInheritedSuccess = classDecl.extractMethodNode(postInv, "syncCallInheritedSuccess", repos)
 				executeNode(syncCallInheritedSuccess, repos, postInv) shouldBe true

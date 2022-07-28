@@ -85,8 +85,7 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
         // A suspend; is just shorthand for await True;
         is SuspendStmt -> return org.abs_models.crowbar.data.AwaitStmt(Const("true", input.model.boolType),FreshGenerator.getFreshPP())
         is ReturnStmt -> {
-            val expr = translateExpression(input.retExp, returnType, subst, false)
-            return appendDesugaredCaseExprs(expr.second, org.abs_models.crowbar.data.ReturnStmt(expr.first))
+            return desugarReturn(input, returnType,subst)
         }
         is IfStmt -> {
             val expr = translateExpression(input.conditionNoTransform, returnType, subst, false)
@@ -498,6 +497,28 @@ fun desugar(loc: Location, type: Type, syncCall: SyncCall, returnType :Type, sub
     return SeqStmt(callStmt, syncStmt)
 }
 
+
+
+fun desugarReturn(returnStmt: ReturnStmt, returnType: Type,subst: Map<String, Expr>):org.abs_models.crowbar.data.Stmt{
+
+    val callExp = returnStmt.callExpression
+
+    if(callExp == null) {
+        val expr = translateExpression(returnStmt.retExp, returnType, subst, false)
+        return appendDesugaredCaseExprs(expr.second, org.abs_models.crowbar.data.ReturnStmt(expr.first))
+    } else{
+        val loc = FreshGenerator.getFreshProgVar(returnType)
+        val calleeExpr = translateExpression(callExp.callee, returnType, subst,true).first
+        val callExpr = translateExpression(callExp, returnType, subst,true).first
+        val callStmt = if(callExp is SyncCall)
+            desugar(loc, callExp.type, callExp, returnType, subst)
+            else if(callExpr is CallingExpr)
+            CallStmt(loc, calleeExpr, callExpr)
+            else throw Exception("Call expression $callExp of type ${callExp.javaClass} not supported")
+        return SeqStmt(callStmt, org.abs_models.crowbar.data.ReturnStmt(loc))
+    }
+
+}
 fun appendDesugaredCaseExprs(desugaredCaseExprs:List<org.abs_models.crowbar.data.Stmt>, stmt: org.abs_models.crowbar.data.Stmt):org.abs_models.crowbar.data.Stmt{
     return appendStmt(appendListStmt(desugaredCaseExprs), stmt)
 }

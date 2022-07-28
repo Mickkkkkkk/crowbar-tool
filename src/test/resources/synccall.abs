@@ -43,6 +43,11 @@ class SyncCallC implements SyncCallI{
         return a;
     }
 
+    [Spec : Ensures(result > 0)]
+    Int simpleDirectReturnSyncCallSuccess(Int x){
+        return this.resultGreaterThanZero(x);
+    }
+
     Int syncCallInherited(Int x){
         return x;
     }
