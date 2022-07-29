@@ -3,7 +3,10 @@ package org.abs_models.crowbar.data
 import org.abs_models.crowbar.interfaces.*
 import org.abs_models.crowbar.main.ADTRepos
 import org.abs_models.crowbar.main.FunctionRepos
+import org.abs_models.crowbar.main.applyBinding
+import org.abs_models.crowbar.main.getMapType
 import org.abs_models.crowbar.types.getReturnType
+import org.abs_models.frontend.ast.ConstructorArg
 import org.abs_models.frontend.typechecker.DataTypeType
 import org.abs_models.frontend.typechecker.Type
 
@@ -654,49 +657,29 @@ fun prettyPrintFunction(params: List<Term>, name: String):String{
     return name+"("+params.map { p -> p.prettyPrint() }.fold("") { acc, nx -> "$acc,$nx" }.removePrefix(",") + ")"
 }
 
-fun bindGenerics(bindingType: Type, unboundTerm: Term): Term {
-    if (unboundTerm is Function)
-        return unboundTerm
-    if (unboundTerm is Placeholder)
-        return Placeholder(unboundTerm.name, bindingType)
-    if (unboundTerm is WildCardVar)
-        return WildCardVar(unboundTerm.name, bindingType)
-    if (unboundTerm is ProgVar)
-        return ProgVar(unboundTerm.name, bindingType)
-    if (unboundTerm is Field)
-        return Field(unboundTerm.name, bindingType)
-    if(unboundTerm is Case)
-        return Case(unboundTerm.match, unboundTerm.expectedType, unboundTerm.branches.map {
-            BranchTerm(it.matchTerm, bindGenerics(bindingType,it.branch)) },unboundTerm.freeVars, unboundTerm.expectedTypeConcr)
-    val bindingTypeHasArgs = bindingType is DataTypeType && bindingType.hasTypeArgs()
-    val unboundTermHasArgs =
-        unboundTerm is DataTypeConst && unboundTerm.concrType is DataTypeType && unboundTerm.concrType.hasTypeArgs()
-
-    if (bindingTypeHasArgs != unboundTermHasArgs || (bindingType as DataTypeType).numTypeArgs() != ((unboundTerm as DataTypeConst).concrType as DataTypeType).numTypeArgs()) {
-        if (bindingType.isBoundedType && unboundTerm is DataTypeConst){
-            if(unboundTerm.concrType!!.isUnknownType)
-                return DataTypeConst(unboundTerm.name, bindingType, unboundTerm.params)
-            return unboundTerm
-        }
-
-        throw Exception("Term with unbound type \n$unboundTerm \nnot matching with binding type \n$bindingType")
+fun bindGenerics(bindingType: Type, term:Term) :Term{
+    return when (term) {
+        is Function -> term
+        is Placeholder -> Placeholder(term.name, bindingType)
+        is WildCardVar -> WildCardVar(term.name, bindingType)
+        is ProgVar -> ProgVar(term.name, bindingType)
+        is Field -> Field(term.name, bindingType)
+        is Case -> Case(term.match, term.expectedType, term.branches.map {
+            val map = getMapType(bindingType.decl.type, bindingType)
+            val branchType = applyBinding(getReturnType(it.branch), map)
+            val matchTermType = applyBinding(getReturnType(it.matchTerm), map)
+            BranchTerm(bindGenerics(matchTermType, it.matchTerm), bindGenerics(branchType, it.branch))
+        }, term.freeVars, bindingType)
+        is DataTypeConst -> {
+            val map = getMapType(bindingType.decl.type, bindingType)
+            val newType = applyBinding(term.concrType!!.decl.type, map) as DataTypeType
+            val constructor = newType.decl.dataConstructors.filter { it.qualifiedName == term.name }.first()
+            return DataTypeConst(term.name, newType,
+                term.params.zip(constructor.constructorArgs) { it: Term, constr: ConstructorArg ->
+                    bindGenerics(applyBinding(constr.type, map), it)
+                })
+        } else -> throw Exception("Cannot bind $term (${term.javaClass}) to $bindingType")
     }
-
-    val bindingTypeArgs =
-        if (bindingType.simpleName != "List" && bindingType.simpleName != "Set" && bindingType.simpleName != "Map") {
-
-            if (bindingType.numTypeArgs() < unboundTerm.params.size)
-                throw Exception("Cannot bind recursive types that are not List or Set")
-            bindingType.typeArgs
-        } else {
-            listOf(bindingType.typeArgs[0], bindingType)
-        }
-
-
-    return DataTypeConst(
-        unboundTerm.name,
-        bindingType,
-        bindingTypeArgs.zip(unboundTerm.params).map<Pair<Type, Term>, Term> { bindGenerics(it.first, it.second) })
 }
 
 
