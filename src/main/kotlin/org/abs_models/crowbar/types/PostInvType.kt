@@ -623,6 +623,8 @@ class PITIf(val repos: Repository) : Rule(Modality(
         val typeYes = cond.map[PostInvAbstractVar("TYPE")] as DeductType
         val resThen = SymbolicState(And(input.condition, UpdateOnFormula(updateYes, guardYes)), updateYes, Modality(bodyYes, typeYes), input.exceptionScopes)
 
+        val shortThen = LogicNode(And(input.condition, UpdateOnFormula(updateYes, guardYes)), False).evaluate()
+
         //else
         val guardNo = Not(exprToForm(guardExpr))
         val bodyNo = SeqStmt(cond.map[StmtAbstractVar("ELSE")] as Stmt, contBody)
@@ -630,8 +632,13 @@ class PITIf(val repos: Repository) : Rule(Modality(
         val typeNo = cond.map[PostInvAbstractVar("TYPE")] as DeductType
         val resElse = SymbolicState(And(input.condition, UpdateOnFormula(updateNo, guardNo)), updateNo, Modality(bodyNo, typeNo), input.exceptionScopes)
 
+        val shortElse = LogicNode(And(input.condition, UpdateOnFormula(updateYes, guardNo)), False).evaluate()
         val zeros  = divByZeroNodes(listOf(guardExpr), contBody, input, repos)
-        return listOf<SymbolicTree>(SymbolicNode(resThen, info = InfoIfThen(guardExpr)), SymbolicNode(resElse, info = InfoIfElse(guardExpr))) + zeros
+        var next = zeros
+        if(shortThen && !shortElse) next = next + listOf(SymbolicNode(resElse, info = InfoIfThen(guardExpr)))
+        else if(shortElse && !shortThen) next = next +listOf(SymbolicNode(resElse, info = InfoIfElse(guardExpr)))
+        else next = next+ listOf(SymbolicNode(resThen, info = InfoIfThen(guardExpr)), SymbolicNode(resElse, info = InfoIfElse(guardExpr)))
+        return next
     }
 }
 

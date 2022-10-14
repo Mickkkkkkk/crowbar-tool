@@ -89,7 +89,7 @@ class Main : CliktCommand() {
         reportPath = "$report"
         reporting = reportFlag
 
-        if(!Files.exists(report))
+        if(!Files.exists(report) && reporting)
             File(reportPath).writeText("")
 
         if(investigate && deductType != PostInvType::class)
