@@ -399,7 +399,15 @@ class PITCallAssign(repos: Repository) : PITAssign(repos, Modality(
 
         //NonNull check here
         val absExp = calleeExpr.absExp
-        val isNonNull = false //absExp?.nonNull() ?: false
+        var isNonNull = false //absExp?.nonNull() ?: false
+        if(absExp is VarUse){ //sometimes the propagation of NonNull values seems to fail, this is doing it by hand
+            val tt = absExp.decl;
+            if(tt.parent.nodeAnnotations.count() != 0) {
+                val anon = tt.parent.nodeAnnotations.first()
+                if (anon != null && anon.astChildren().first().toString() == "NonNull()")
+                    isNonNull = true
+            }
+        }
         val nonNull =
         SymbolicNode(SymbolicState(And(input.condition, UpdateOnFormula(input.update, notNullCondition)), input.update, Modality(
             appendStmt(ThrowStmt(DataTypeExpr("ABS.StdLib.Exceptions.NullPointerException","ABS.StdLib.Exception", repos.model?.exceptionType, listOf())),

@@ -552,6 +552,24 @@ class PostInvTest : CrowbarTest() {
 				res = classDecl.extractMethodNode(postInv, "success4", repos)
 				executeNode(res, repos, postInv) shouldBe true
 			}
+			"$smt water" {
+				smtPath = smt
+				val (model, repos) = load(listOf(Paths.get("src/test/resources/Watertank.abs")))
+				val res = model.exctractMainNode(postInv)
+				executeNode(res, repos, postInv) shouldBe true
+				for (cl in model.extractAllClasses()) {
+					cl.executeAll(repos, postInv) shouldBe true
+				}
+			}
+			"$smt chat" {
+				smtPath = smt
+				val (model, repos) = load(listOf(Paths.get("src/test/resources/chat.abs")))
+				val res = model.exctractMainNode(postInv)
+				executeNode(res, repos, postInv) shouldBe true
+				for (cl in model.extractAllClasses()) {
+					cl.executeAll(repos, postInv) shouldBe true
+				}
+			}
 		}
 	}
 }

@@ -25,7 +25,7 @@ interface SymbolicLeaf : SymbolicTree{
 
 data class StaticNode(val str : String) : SymbolicLeaf{
     override fun finishedExecution() : Boolean = true
-    override fun debugString(steps : Int) : String = "NOT IMPLEMENTED"
+    override fun debugString(steps : Int) : String = ""
     override fun collectLeaves() : List<SymbolicLeaf> = listOf(this)
     override fun evaluate() : Boolean = false
     override fun hasAbstractVar() : Boolean = false

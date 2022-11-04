@@ -265,7 +265,7 @@ fun builtinFunctions(): BlockProofElements{
 
 //generation of translation for primitive
 fun getPrimitiveDecl():BlockProofElements{
-    val valueofs = listOf(FunDecl("valueOf_ABS_StdLib_Int", listOf("ABS.StdLib.Fut"), "Int"), FunDecl("valueOf_ABS_StdLib_Bool", listOf("ABS.StdLib.Fut"), "Bool"))
+    val valueofs = listOf(FunDecl("valueOf_ABS_StdLib_Int", listOf("ABS.StdLib.Fut"), "Int"), FunDecl("valueOf_ABS_StdLib_Bool", listOf("ABS.StdLib.Fut"), "Bool"), FunDecl("valueOf_ABS_StdLib_String", listOf("ABS.StdLib.Fut"), "String"), FunDecl("valueOf_ABS_StdLib_Float", listOf("ABS.StdLib.Fut"), "Real"))
     return BlockProofElements(ADTRepos.primitiveDtypesDecl.filter{!it.type.isStringType}.map{ DeclareSortSMT(it.qualifiedName)} + valueofs,"Primitive Declaration")
 }
 

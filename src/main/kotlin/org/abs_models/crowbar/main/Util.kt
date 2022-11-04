@@ -247,7 +247,9 @@ fun executeNode(node : SymbolicNode, repos: Repository, usedType: KClass<out Ded
             is LogicNode -> {
                 count++
                 output("Crowbar-v: "+ deupdatify(l.ante).prettyPrint()+"->"+deupdatify(l.succ).prettyPrint(), Verbosity.V)
-                closed = closed && l.evaluate()
+                val res = l.evaluate()
+                output("Crowbar-v: closed? $res", Verbosity.V)
+                closed = closed && res
             }
             is StaticNode -> {
                 output("Crowbar: open static leaf ${l.str}", Verbosity.SILENT)

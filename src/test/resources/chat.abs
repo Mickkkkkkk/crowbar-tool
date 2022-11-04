@@ -1,0 +1,308 @@
+module ABChat;
+
+data ServerMsg = Welcome
+   	           | GoodBye
+          	   | NewMessage(String);
+
+data ClientMsg = ChatMessage(String,String);
+
+def Bool noNull(List<ButtonListener> l) = case l {
+    Nil => True;
+    Cons(x, xs) => x != null && noNull(xs);
+};
+
+interface Server {
+   Unit start();
+   [Spec: Requires(c != null)]
+   Session connect(Client c);
+}
+
+interface Session {
+   Unit receive(ClientMsg m);
+   Unit close();
+}
+
+interface Client {
+  [Spec: Requires(s != null)]
+	Unit setServer(Server s);
+	Unit start();
+
+	Unit receive(ServerMsg m);
+   [Spec: Ensures(result != null)]
+	ClientGUI getGUI();
+}
+
+interface ClientGUI {
+   Unit init2();
+   [Spec: Ensures(result != null)]
+   Button getSendButton();
+   [Spec: Ensures(result != null)]
+   TextField getTextField();
+}
+
+interface ClientIntern extends Client {
+	 Unit sendText(String text);
+}
+ 
+interface ClientGUIIntern extends ClientGUI {
+   [Spec: Ensures(result != null)]
+   ClientIntern getClientIntern();
+   String getTextFieldText();
+} 
+
+[Spec: Requires(client != null && gui != null && sendButton != null && textField != null)]
+[Spec: ObjInv(client != null && gui != null && sendButton != null && textField != null )]
+class ClientGUIImpl(ClientIntern client, Window gui, Button sendButton, TextField textField) implements ClientGUIIntern {
+   Bool initialized = False;
+   
+   {   
+   	  ButtonListener l = new SendButtonListener(this);
+   	  sendButton!registerListener(l);
+   }
+
+
+   Unit init2(){
+   	  initialized = True;
+   }
+   
+   Button getSendButton() {
+      await initialized;
+      return this.sendButton;
+   }
+   
+   TextField getTextField() {
+      await initialized;
+      return textField;
+   }
+   
+   String getTextFieldText() {
+      Fut<String> f = textField!getText();
+      return f.get;
+   }
+   
+   ClientIntern getClientIntern() {
+      return client;
+   }
+}
+
+[Spec: Requires(client != null)]
+[Spec: ObjInv(client != null)]
+class SendButtonListener(ClientGUIIntern client) implements ButtonListener {
+   Unit pressed() {
+       ClientIntern ci = client.getClientIntern();
+       String s = client.getTextFieldText();
+   	   ci.sendText(s);
+   }
+}
+
+
+class ClientImpl implements ClientIntern { 
+   String name = "Alice";
+   Server server;
+   Session session;
+   ClientGUI gui;
+
+   ClientGUI getGUI() {
+	    if (gui == null) {
+     	  Window w = new WindowImpl();
+     	  Fut<Button> f = w!localButton("Send");
+
+     	  Button sendButton = f.get;
+          Fut<TextField> tf = w!localTextField();
+
+          TextField textField = tf.get;
+	      gui = new ClientGUIImpl(this, w, sendButton, textField);
+	    }
+   	  return gui;
+   }
+
+   Unit setServer(Server s) { 
+   	   this.server = s;
+   }
+   
+   Unit start() {
+      await server != null;
+      Fut<Session> f = server!connect(this);
+      await f?;
+      session = f.get; 
+   }
+   
+   Unit receive(ServerMsg ms) {
+   	  await session != null;
+   	  ClientMsg msg = ChatMessage("","");
+   	  Fut<Unit> u = session ! receive(msg);
+   	  await u?;
+
+      await session != null; //bug
+   	  session ! close();
+   }  
+   
+   Unit sendText(String text) {
+      await session != null;
+      session ! receive(ChatMessage(name,text));
+   }
+}
+interface ButtonListener {
+   Unit pressed();
+}
+
+interface Window {
+   [Spec: Ensures(result != null)]
+   Button localButton(String label);
+   [Spec: Ensures(result != null)]
+   TextField localTextField();
+}
+
+interface TextField {
+   String getText();
+   Unit setText(String localText);
+}
+
+interface Button {
+   Unit press();
+   String getLabel();
+   [Spec: Requires(l != null)]
+   Unit registerListener(ButtonListener l);
+}
+
+class TextFieldImpl implements TextField {
+  String text = "";
+  String getText() {
+     return text;
+  }
+
+  Unit setText(String s) {
+  	 text = s;
+  }
+}
+
+class WindowImpl implements Window {
+   Button localButton(String label) {
+      Button b = new ButtonImpl(this, label);
+      return b;
+   }
+   
+   TextField localTextField() {
+   	  TextField t = new TextFieldImpl();
+   	  return t;
+   }
+}
+
+[Spec: Requires(gui != null)] 
+[Spec: ObjInv(gui != null)]
+class ButtonImpl(Window gui, String label) implements Button {
+    List<[NonNull] ButtonListener> listener = Nil;
+   
+	Unit press() {
+		List<[NonNull] ButtonListener> r = listener;
+
+        [Spec: WhileInv(gui != null)]
+		while (r != Nil) {
+			[NonNull] ButtonListener l = head(r);
+			l ! pressed();
+			r = tail(r);
+		}	
+	}
+	
+	String getLabel() {
+		return label;
+	}
+	
+	Unit registerListener(ButtonListener l) {
+		listener = Cons(l,listener);
+	}
+}
+
+
+interface ServerIntern extends Server {
+	Unit sessionClosed(SessionIntern i);
+}
+
+interface SessionIntern extends Session {
+   Unit init2();
+}
+
+class ServerImpl implements ServerIntern { 
+   Bool running = False;
+   List<SessionIntern> sessions = Nil;
+   
+   Unit start() {
+      running = True;
+   }
+   
+   Session connect(Client c) {
+       await running;
+       SessionIntern s;
+       s = new SessionImpl(this, c);
+       sessions = Cons(s,sessions);
+       s!init2();
+       return s;
+   }
+
+	Unit sessionClosed(SessionIntern i) {
+	   sessions = without(sessions,i);
+	}
+
+}
+
+[Spec: Requires(server != null && c != null)] 
+[Spec: ObjInv(server != null && c != null)]
+class SessionImpl(ServerIntern server, Client c) implements SessionIntern {
+	Unit init2() {
+		c!receive(Welcome);
+	}
+	
+	Unit close() {
+	   server!sessionClosed(this);
+	}
+	
+	Unit receive(ClientMsg m) {
+	}
+
+}
+
+interface User {
+   [Spec: Requires(client != null)] 
+   Unit use(ClientGUI client);
+}
+
+class UserImpl implements User {
+   ClientGUI gui;
+   TextField textField;
+
+   [Spec: Ensures(sendBtn != null)]
+   Unit use(ClientGUI client) { 
+	  gui = client;
+	  Fut<Button> f = client!getSendButton();
+	  await f?;
+	  Button sendBtn = f.get; //must be local, otherwise you press the button of the wrong GUI!
+	  
+	  Fut<TextField> f2 = client!getTextField();
+
+	  await f2?;
+
+	  textField = f2.get;
+
+	  textField!setText("Hello");
+	  sendBtn!press();
+   }
+
+}
+
+{
+    Server server = new ServerImpl();  
+	server ! start();
+	
+	Client client = new ClientImpl();
+	client ! setServer(server);
+	client ! start();
+	
+	
+	Fut<ClientGUI> fgui = client ! getGUI();
+	ClientGUI gui = fgui.get;
+	
+	User user = new UserImpl();
+	user ! use(gui);	
+	
+}
+

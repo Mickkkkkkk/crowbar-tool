@@ -1,0 +1,76 @@
+module SingleWaterTank;
+
+// Water tank from the DiscoTec Tutorial with *duration* removed 
+
+data ValveCommand = Open | Close;
+
+
+interface WaterTank {
+    Float getLevel();
+    Unit valvecontrol(ValveCommand command);
+    [HTTPCallable] List<Pair<Int, Float>> getValveAndLevelHistory();
+}
+
+interface Controller { }
+
+// A water tank that is filled with a constant flow `fillrate'.  When
+// the valve is open, it is drained with a speed proportional to the
+// current fill level by a factor `drainrate'.
+[Spec : Requires(fillrate >= 0.0)] 
+[Spec : ObjInv(fillrate >= 0.0)] 
+[Spec : Requires(drainrate >= 0.0)] 
+[Spec : ObjInv(drainrate >= 0.0)] 
+[Spec : ObjInv(level >= 0.0)] 
+class WaterTank(Float fillrate, Float drainrate) implements WaterTank {
+    Float level = 0.0;
+    Bool valve_open = False;
+    List<Pair<Int, Float>> history = list[];
+
+    List<Pair<Int, Float>> getValveAndLevelHistory() { return history; }
+
+    Float getLevel() { return level; }
+    Unit valvecontrol(ValveCommand command) {
+        valve_open = command == Open;
+    }
+
+    Unit run() {
+        [Spec : WhileInv(level >= 0.0 && drainrate >= 0.0 && fillrate >= 0.0)] 
+        while (True) {
+            // Discrete-time simulation of water inflow and outflow
+            await True; //duration(1, 1);
+            // The outflow is proportional to the current tank level
+            level = level + fillrate;
+            if (valve_open) {
+                if(drainrate * level < level)
+                  level = level - drainrate * level;
+                else level = 0.0;
+            }
+            history = Cons(Pair(when valve_open then 1 else 0, level), history);
+        }
+    }
+}
+
+// A tank controller that monitors the tank level, opening and closing
+// the drain valve as needed to maintain a safe current level in the
+// tank.
+[Spec : Requires(tank != null)] 
+[Spec : ObjInv(tank != null)] 
+class Controller(WaterTank tank, Float minlevel, Float maxlevel) implements Controller {
+    Unit run() {
+        [Spec : WhileInv(tank != null)] 
+        while (True) {
+            Float level = await tank!getLevel();
+            if (level >= maxlevel) {
+                tank!valvecontrol(Open);
+            } else if (level <= minlevel) {
+                tank!valvecontrol(Close);
+            }
+            await True; //duration(1, 1);
+        }
+    }
+}
+
+{
+    [HTTPName: "watertank"] WaterTank tank = new WaterTank(1.0, 0.2);
+    Controller controller = new Controller(tank, 5.0, 10.0);
+}
