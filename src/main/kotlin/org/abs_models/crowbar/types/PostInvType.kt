@@ -639,7 +639,7 @@ class PITIf(val repos: Repository) : Rule(Modality(
         val typeNo = cond.map[PostInvAbstractVar("TYPE")] as DeductType
         val resElse = SymbolicState(And(input.condition, UpdateOnFormula(updateNo, guardNo)), updateNo, Modality(bodyNo, typeNo), input.exceptionScopes)
 
-        val shortElse = LogicNode(And(input.condition, UpdateOnFormula(updateYes, guardNo)), False).evaluate()
+        val shortElse = LogicNode(And(input.condition, UpdateOnFormula(updateNo, guardNo)), False).evaluate()
         val zeros  = divByZeroNodes(listOf(guardExpr), contBody, input, repos)
         var next = zeros
         if(shortThen && !shortElse) next = next + listOf(SymbolicNode(resElse, info = InfoIfThen(guardExpr)))
