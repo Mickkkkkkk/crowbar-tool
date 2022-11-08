@@ -643,7 +643,7 @@ class PITIf(val repos: Repository) : Rule(Modality(
         val zeros  = divByZeroNodes(listOf(guardExpr), contBody, input, repos)
         var next = zeros
         if(shortThen && !shortElse) next = next + listOf(SymbolicNode(resElse, info = InfoIfThen(guardExpr)))
-        else if(shortElse && !shortThen) next = next +listOf(SymbolicNode(resElse, info = InfoIfElse(guardExpr)))
+        else if(shortElse && !shortThen) next = next +listOf(SymbolicNode(resThen, info = InfoIfElse(guardExpr)))
         else next = next+ listOf(SymbolicNode(resThen, info = InfoIfThen(guardExpr)), SymbolicNode(resElse, info = InfoIfElse(guardExpr)))
         return next
     }
