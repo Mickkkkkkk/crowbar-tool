@@ -279,12 +279,13 @@ fun ClassDecl.executeAll(repos: Repository, usedType: KClass<out DeductType>): B
     return totalClosed
 }
 
-fun ClassDecl.executeAllREPORT(repos: Repository, usedType: KClass<out DeductType>): Boolean{
+fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductType>): Boolean{
     try {
         val iNode = extractInitialNode(usedType)
         var totalClosed = executeNode(iNode, repos, usedType, "<init>")
         var csv = ""
         output("Crowbar  : Verification <init>: $totalClosed")
+        val start = System.currentTimeMillis()
         for (m in methods) {
             csv += "${m.fileName};${(m.parent.parent as ClassDecl).name};${m.methodSig.name};"
             try {
@@ -294,25 +295,27 @@ fun ClassDecl.executeAllREPORT(repos: Repository, usedType: KClass<out DeductTyp
                 output("Crowbar  : Verification ${m.methodSig.name}: $closed")
                 totalClosed = totalClosed && closed
 
-                csv += "OK;NONE\n"
+                csv += "OK;NONE;"
             } catch (e: Exception) {
                 val sw = StringWriter()
                 (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
                 val cause = sw.toString()
                 output("Crowbar  : Verification ${m.methodSig.name} failed due to exception:")
                 output(sw.toString())
-                csv += "ERR;${cause.split("\n")[0]}\n"
+                csv += "ERR;${cause.split("\n")[0]};"
                 totalClosed = false
             }
         }
-        File("${reportPath}").appendText(csv)
+        val end = System.currentTimeMillis()
+        csv += "${(end-start/1000)}\n"
+        File(reportPath).appendText(csv)
         return totalClosed
     }catch (e: Exception) {
         val sw = StringWriter()
         (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
         val cause = sw.toString()
         val csv = "${this.fileName};${this.name};NONE;M_ERR;${cause.split("\n")[0]}\n"
-        File("${reportPath}").appendText(csv)
+        File(reportPath).appendText(csv)
         output("Crowbar  : Verification of initialNode failed due to exception")
         return false
     }

@@ -124,7 +124,7 @@ class Main : CliktCommand() {
 
                     val totalClosed =
                         if(!reportFlag) classDecl.executeAll(repos, deductType)
-                        else classDecl.executeAllREPORT(repos, deductType)
+                        else classDecl.executeAllReport(repos, deductType)
                     output("Crowbar  : Verification result ${classDecl.qualifiedName}: $totalClosed\n", Verbosity.SILENT)
                     finalClose = finalClose && totalClosed
                 }

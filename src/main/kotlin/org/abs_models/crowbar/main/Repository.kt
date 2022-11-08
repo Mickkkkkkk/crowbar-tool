@@ -248,7 +248,8 @@ object FunctionRepos{
 	val SMTbuiltinFunctions = mapOf(
 		"strlen" to "str.len",
 		"substr" to "str.substr",
-		"intToString" to "str.from_int"
+		"intToString" to "str.from_int",
+		"reverse" to "reverse"
 	)
 	val builtInFunctionNames = setOf(
 		"abs",

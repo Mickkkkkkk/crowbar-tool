@@ -26,7 +26,7 @@ class WaterTank(Float fillrate, Float drainrate) implements WaterTank {
     Bool valve_open = False;
     List<Pair<Int, Float>> history = list[];
 
-    List<Pair<Int, Float>> getValveAndLevelHistory() { return history; }
+    List<Pair<Int, Float>> getValveAndLevelHistory() { return reverse(history); }
 
     Float getLevel() { return level; }
     Unit valvecontrol(ValveCommand command) {
