@@ -285,8 +285,9 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
         var totalClosed = executeNode(iNode, repos, usedType, "<init>")
         var csv = ""
         output("Crowbar  : Verification <init>: $totalClosed")
-        val start = System.currentTimeMillis()
         for (m in methods) {
+
+            val startReport = System.currentTimeMillis()
             csv += "${m.fileName};${(m.parent.parent as ClassDecl).name};${m.methodSig.name};"
             try {
                 output("Crowbar  : Verification ${m.methodSig.name} started...")
@@ -305,9 +306,9 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
                 csv += "ERR;${cause.split("\n")[0]};"
                 totalClosed = false
             }
+            val endReport = System.currentTimeMillis()
+            csv += "${(endReport-startReport).toFloat()/1000}\n"
         }
-        val end = System.currentTimeMillis()
-        csv += "${(end-start/1000)}\n"
         File(reportPath).appendText(csv)
         return totalClosed
     }catch (e: Exception) {
@@ -315,6 +316,7 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
         (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
         val cause = sw.toString()
         val csv = "${this.fileName};${this.name};NONE;M_ERR;${cause.split("\n")[0]}\n"
+        println("appending $csv to $reportPath")
         File(reportPath).appendText(csv)
         output("Crowbar  : Verification of initialNode failed due to exception")
         return false
