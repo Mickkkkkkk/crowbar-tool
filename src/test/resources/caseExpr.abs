@@ -95,6 +95,8 @@ case l1 {
 
 class E(ComplexOption fieldA){
 
+    Int fieldI = 0;
+
     [Spec : Requires( i == 1 )]
     [Spec : Ensures(result == 0)]
     Int fullIntSuccess(Int i){
@@ -212,6 +214,13 @@ class E(ComplexOption fieldA){
             i = 0;
         return i;
     }
+
+    [Spec:Requires(t == Type1(Type3))]
+    [Spec:Ensures(this.fieldI == 1)]
+    Unit caseExprUnequalReturnTypeSuccess(Type t){
+        this.fieldI = case t {Type1(Type3) => 1;};
+    }
+
 
     [Spec: Ensures(result == 5)]
     Int callRecFuncPlaceholdersNoContractSuccess(){

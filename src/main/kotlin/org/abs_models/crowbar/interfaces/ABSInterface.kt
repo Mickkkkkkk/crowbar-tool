@@ -308,10 +308,11 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
 
 
                 /*
-                * the CaseExpr is desugared to a CaseStmt which assign a fresh var "newVar" retured as translated expression
+                * the CaseExpr is desugared to a CaseStmt which assign a fresh var "newVar" returned as translated expression
                 * together with the list of statements that need to be prepended to the occurrence of (usually assignment of) the mentioned variable.
                 */
-                val newVar = FreshGenerator.getFreshProgVar(returnType)
+                val t = input.type
+                val newVar = FreshGenerator.getFreshProgVar(input.type)
                 val matchExpr = translateExpression(input.expr, returnType, subst, fullExpr,map)
 
 
@@ -354,7 +355,7 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                 */
 
                 if(list.last().matchTerm !is UnderscorePattern)
-                    list.add(Branch(FreshGenerator.getFreshWildCard(applyBinding(input.expr.type, map)),org.abs_models.crowbar.data.AssignStmt(newVar, FreshGenerator.getFreshProgVar(returnType))))
+                    list.add(Branch(FreshGenerator.getFreshWildCard(applyBinding(input.expr.type, map)),org.abs_models.crowbar.data.AssignStmt(newVar, FreshGenerator.getFreshProgVar(input.type))))
 
                 /*
                 * the value returned is a pair with the new variable and the list of generated of statement

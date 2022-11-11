@@ -135,6 +135,9 @@ class CaseExprTest : CrowbarTest() {
                 val callFuncNestedGenericsPlaceholdersNoContractFail =  classDecl.extractMethodNode(postInv, "callFuncNestedGenericsPlaceholdersNoContractFail", repos)
                 executeNode(callFuncNestedGenericsPlaceholdersNoContractFail, repos, postInv) shouldBe false
 
+                val caseExprUnequalReturnTypeSuccess =  classDecl.extractMethodNode(postInv, "caseExprUnequalReturnTypeSuccess", repos)
+                executeNode(caseExprUnequalReturnTypeSuccess, repos, postInv) shouldBe true
+
             }
         }
         "z3 wildcards-no-precondition"{
