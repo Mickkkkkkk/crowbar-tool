@@ -3,11 +3,9 @@ package org.abs_models.crowbar.interfaces
 import org.abs_models.crowbar.data.*
 import org.abs_models.crowbar.data.Const
 import org.abs_models.crowbar.data.SkipStmt
-import org.abs_models.crowbar.main.ADTRepos
-import org.abs_models.crowbar.main.FunctionRepos
+import org.abs_models.crowbar.main.*
 import org.abs_models.crowbar.main.FunctionRepos.functionNameSMT
-import org.abs_models.crowbar.main.applyBinding
-import org.abs_models.crowbar.main.extractSpec
+import org.abs_models.crowbar.main.FunctionRepos.timeFunctions
 import org.abs_models.crowbar.rule.FreshGenerator
 import org.abs_models.frontend.ast.*
 import org.abs_models.frontend.ast.AssertStmt
@@ -109,8 +107,8 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
             return appendDesugaredCaseExprs(expr.second, BranchStmt(expr.first, BranchList(list)))
         }
         is DieStmt -> return org.abs_models.crowbar.data.AssertStmt(Const("False", input.model.boolType))
-        is MoveCogToStmt -> throw Exception("Statements ${input::class} are not coreABS" )
-        is DurationStmt -> throw Exception("Statements ${input::class} are not coreABS" )
+        is MoveCogToStmt -> throw NonCoreABSException("Statements ${input::class}" )
+        is DurationStmt -> throw NonCoreABSException("Statements ${input::class}" )
         is ThrowStmt -> {
             val expr = translateExpression(input.reason, returnType, subst, false)
             return appendDesugaredCaseExprs(expr.second, org.abs_models.crowbar.data.ThrowStmt(expr.first))
@@ -134,6 +132,9 @@ fun translateStatement(input: Stmt?, subst: Map<String, Expr>) : org.abs_models.
 }
 
 fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>, fullExpr:Boolean, map: Map<TypeParameter, Type> = mapOf()) : Pair<Expr, List<org.abs_models.crowbar.data.Stmt>> {
+
+    if(input !is NullExp && input.type.qualifiedName.startsWith("ABS") && !input.type.qualifiedName.startsWith("ABS.StdLib"))
+        throw NonCoreABSException(input.type.qualifiedName)
     val converted = when(input){
         //because this is also used in the specification translation we need to check some things that are otherwise ensured by the
         //ABS compiler, like field references in interfaces
@@ -276,7 +277,12 @@ fun translateExpression(input: Exp, returnType: Type, subst : Map<String, Expr>,
                         FreshGenerator.getFreshProgVar(input.model.intType),
                         listOf<org.abs_models.crowbar.data.Stmt>()
                     )
-                } else throw Exception("Translation of FnApp is not fully supported, term is $input with function ${input.decl.qualifiedName}")
+                } else if(input.decl.qualifiedName in timeFunctions){
+                    throw NonCoreABSException("Time Function: ${input.decl.qualifiedName}")
+                }else if(input.decl.qualifiedName.startsWith("ABS") && !input.decl.qualifiedName.startsWith("ABS.StdLib")){
+                    throw NonCoreABSException(input.decl.qualifiedName)
+                }
+                else throw Exception("Translation of FnApp is not fully supported, term is $input with function ${input.decl.qualifiedName}: ${input.type}")
             }
         }
         is IfExp -> {
@@ -433,7 +439,7 @@ fun translateGuard(input: Guard, returnType: Type, subst: Map<String, Expr>) : E
             placeholder.absExp = input.`var` // Save reference to original guard expression
             placeholder
         }
-        else -> throw Exception("Guards ${input::class} are not coreABS" )
+        else -> throw NonCoreABSException("Guards ${input::class}" )
     }
 
 fun translatePattern(pattern : Pattern, overrideType : Type, returnType:Type, subst: Map<String, Expr>,map : Map<TypeParameter, Type> = mapOf()) : Expr =

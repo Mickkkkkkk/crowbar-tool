@@ -69,7 +69,7 @@ interface PostInvType : DeductType{
                 succeedsSet = extractContextSet(mDecl, "Succeeds")
             }
         } catch (e: Exception) {
-            if(reporting) reportException("error during translation, aborting", e)
+            if(reporting) throw e
             System.err.println("error during translation, aborting")
             throw e
         }
@@ -149,7 +149,7 @@ interface PostInvType : DeductType{
             objInv = extractSpec(classDecl, "ObjInv", UnknownType.INSTANCE)
             objPre = extractSpec(classDecl, "Requires",UnknownType.INSTANCE)
         } catch (e: Exception) {
-            if(reporting) reportException("error during translation, aborting", e)
+            if(reporting) throw e
             e.printStackTrace()
             System.err.println("error during translation, aborting")
             exitProcess(-1)

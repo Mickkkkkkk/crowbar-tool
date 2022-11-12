@@ -39,11 +39,14 @@ val mapBuiltinFunction = mapOf(
     "reverse" to Pair(listOf("String"), "String")
 ) + FunctionRepos.builtinFunctions
 
-val staticAssertions = listOf(
-    Eq(Function("Unit"),Function("0")),
-    extendsProperty(),
-    implementsProperty()
-)
+val staticAssertions =
+    if(model !=null)
+        listOf(
+            Eq(Function("Unit"), Function("0")),
+            extendsProperty(),
+            implementsProperty())
+    else listOf()
+
 
 @Suppress("UNCHECKED_CAST")
 fun generateSMT(ante : Formula, succ: Formula, modelCmd: String = "") : String {

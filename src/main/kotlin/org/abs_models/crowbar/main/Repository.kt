@@ -42,7 +42,7 @@ object ADTRepos {
 	val usedHeaps = mutableSetOf<String>()
 
 	//These are either handled manually as special cases (e.g., float, Exception)
-	private val ignorableBuiltInDataTypes : Set<String> = setOf(
+	val ignorableBuiltInDataTypes : Set<String> = setOf(
 			//"ABS.StdLib.Map",
 			"ABS.StdLib.Float",
 			"ABS.StdLib.Time",
@@ -256,12 +256,28 @@ object FunctionRepos{
 		"head","tail", "appendright", "concatenate", "length", "list", "nth", "without","isEmpty",//list
 		"fst","snd", //pair
 		"fstT", "sndT","trdT", //triple
-		"contains", "set", "insertElement", "keys", "union",//set
-		"emptyMap", "lookup", "map", "lookupUnsafe", "put", //map
+		"contains", "set", "insertElement", "keys", "union","emptySet", "take", "remove","size", "elements",//set
+		"emptyMap", "lookup", "map", "lookupUnsafe", "put", "lookupDefault", "removeKey",//map
 		"fromJust", //maybe
 		"toString"
 
 	) + SMTbuiltinFunctions.keys + builtinFunctions.keys
+
+	val timeFunctions = setOf(
+		"ABS.StdLib.now",
+		"ABS.StdLib.deadline",
+		"ABS.StdLib.duration",
+		"ABS.StdLib.timeValue",
+		"ABS.StdLib.timeDifference",
+		"ABS.StdLib.timeLessThan",
+		"ABS.StdLib.durationValue",
+		"ABS.StdLib.isDurationInfinite",
+		"ABS.StdLib.addDuration",
+		"ABS.StdLib.subtractDuration",
+		"ABS.StdLib.durationLessThan",
+		"ABS.StdLib.subtractFromDuration")
+
+	val nonCoreABSFunctions = mutableSetOf<String>()
 
 	val known : MutableMap<String, FunctionDecl> = mutableMapOf()
 	val simpleNameFunctions : MutableSet<String> = mutableSetOf()

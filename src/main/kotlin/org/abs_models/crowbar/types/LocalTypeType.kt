@@ -54,7 +54,7 @@ interface LocalTypeType : DeductType {
             body = getNormalizedStatement(mDecl.block)
             roles = extractRoleSpec(classDecl)
         } catch (e: Exception) {
-            if(reporting) reportException("error during translation, aborting:", e)
+            if(reporting) throw e
             e.printStackTrace()
             System.err.println("error during translation, aborting")
             exitProcess(-1)

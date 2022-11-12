@@ -519,6 +519,74 @@ class SetClass{
         Set<Int> s2 = set(Cons(2,Cons(2,Cons(2,Nil))));
         return union(s1,s2);
     }
+
+    [Ensures(emptySet(result))]
+    Set<Int> emptySetSuccess (){
+        return EmptySet;
+    }
+
+    [Ensures(emptySet(result))]
+    Set<Int> emptySetSimpleFail (){
+        Set<Int> s1 = set(Cons(2,Cons(2,Cons(2,Cons(2,Nil)))));
+        return s1;
+    }
+
+    [Ensures(emptySet(result))]
+    Set<Int> emptySetUnionFail (){
+        Set<Int> s1 = set(Cons(2,Cons(2,Cons(2,Cons(2,Nil)))));
+        Set<Int> s2 = set(Cons(2,Cons(2,Cons(2,Nil))));
+        return union(s1,s2);
+    }
+
+    [Ensures(take(result) == 1)]
+    Set<Int> takeSuccess (){
+        Set<Int> s1 = set(Cons(1,Cons(2,Cons(3,Cons(4,Nil)))));
+        return s1;
+    }
+
+    [Ensures(take(result) == 5)]
+    Set<Int> takeFail (){
+        Set<Int> s1 = set(Cons(1,Cons(2,Cons(3,Cons(4,Nil)))));
+        return s1;
+    }
+
+    [Ensures(remove(result, 1) == set(Cons(2,Cons(3,Cons(4,Nil)))))]
+    Set<Int> removeSuccess (){
+        Set<Int> s1 = set(Cons(1,Cons(2,Cons(3,Cons(4,Nil)))));
+        return s1;
+    }
+
+    [Ensures(remove(result, 1) == set(Cons(5,Cons(3,Cons(4,Nil)))))]
+    Set<Int> removeFail (){
+        Set<Int> s1 = set(Cons(1,Cons(2,Cons(3,Cons(4,Nil)))));
+        return s1;
+    }
+
+    [Ensures(size(result) == 2)]
+    Set<Int> sizeSuccess (){
+        Set<Int> s1 = set(Cons(2,Cons(3,Cons(2,Cons(2,Nil)))));
+        return s1;
+    }
+
+
+    [Ensures(size(result) == 5)]
+    Set<Int> sizeFail (){
+        Set<Int> s1 = set(Cons(2,Cons(3,Cons(2,Cons(2,Nil)))));
+        return s1;
+    }
+
+    [Ensures(elements(result) == Cons(2, Cons(3, Nil)))]
+    Set<Int> elementsSuccess (){
+        Set<Int> s1 = set(Cons(2,Cons(3,Cons(2,Cons(2,Nil)))));
+        return s1;
+    }
+
+
+    [Ensures(elements(result) == Cons(3, Cons(2, Nil)))]
+    Set<Int> elementsFail (){
+        Set<Int> s1 = set(Cons(2,Cons(3,Cons(2,Cons(2,Nil)))));
+        return s1;
+    }
 }
 
 class MapClass{
@@ -590,6 +658,11 @@ class MapClass{
         return lookup(map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil))), 1);
     }
 
+    [Spec: Ensures(result == AnotherType1(AnotherType3))]
+    AnotherType mapWrappingWithLookupDefaultSuccess(){
+        return lookupDefault(map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil))), 3, AnotherType1(AnotherType3));
+    }
+
     [Spec: Ensures(result != Just(AnotherType3))]
     Maybe<AnotherType> mapWrappingWithLookupFail(){
         return lookup(map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil))), 1);
@@ -605,6 +678,19 @@ class MapClass{
     Map<Int,Int> putSimpleSuccess (){
         return put(EmptyMap, 4,2);
     }
+
+
+    [Spec:Ensures(result == Nothing)]
+    Maybe<AnotherType> removeKeyLookupSuccess(){
+        Map<Int,AnotherType> m = map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil)));
+        return lookup(removeKey(m,1),1);
+    }
+    [Spec:Ensures(result != Nothing)]
+    Maybe<AnotherType> removeKeyLookupFail(){
+        Map<Int,AnotherType> m = map(Cons(Pair(1,AnotherType3), Cons(Pair(2,AnotherType2(AnotherType3)), Nil)));
+        return lookup(removeKey(m,1),1);
+    }
+
 
 }
 

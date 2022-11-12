@@ -44,7 +44,7 @@ fun load(paths : List<Path>) : Pair<Model,Repository> {
     val model = try {
         org.abs_models.frontend.parser.Main().parse(input)
     } catch (e : Exception) {
-        if(reporting) reportException("error during parsing, aborting", e)
+        if(reporting) throw e
         e.printStackTrace()
         System.err.println("error during parsing, aborting")
         exitProcess(-1)
@@ -286,7 +286,6 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
         var csv = ""
         output("Crowbar  : Verification <init>: $totalClosed")
         for (m in methods) {
-
             val startReport = System.currentTimeMillis()
             csv += "${m.fileName};${(m.parent.parent as ClassDecl).name};${m.methodSig.name};"
             try {
@@ -303,7 +302,12 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
                 val cause = sw.toString()
                 output("Crowbar  : Verification ${m.methodSig.name} failed due to exception:")
                 output(sw.toString())
-                csv += "ERR;${cause.split("\n")[0]};"
+                val causeException = getCauseException(e, NonCoreABSException::class.java)
+                if(causeException != null) {
+                    csv += "NO_CORE_ABS;${(causeException as NonCoreABSException).featureName};"
+                }
+                else
+                    csv += "ERR;${cause.split("\n")[0]};"
                 totalClosed = false
             }
             val endReport = System.currentTimeMillis()
@@ -315,7 +319,14 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
         val sw = StringWriter()
         (if(e.cause != null)  e.cause else e)!!.printStackTrace(PrintWriter(sw))
         val cause = sw.toString()
-        val csv = "${this.fileName};${this.name};NONE;M_ERR;${cause.split("\n")[0]}\n"
+        val causeException = getCauseException(e, NonCoreABSException::class.java)
+        var csv = "${this.fileName};${this.name};NONE;"
+        if(causeException != null) {
+            csv += "NO_CORE_ABS;${(causeException as NonCoreABSException).featureName}\n"
+        }
+        else {
+            csv += "M_ERR;${cause.split("\n")[0]}\n"
+        }
         println("appending $csv to $reportPath")
         File(reportPath).appendText(csv)
         output("Crowbar  : Verification of initialNode failed due to exception")
@@ -345,4 +356,14 @@ fun getIDeclaration(mSig: MethodSig, iDecl : InterfaceDecl): InterfaceDecl?{
         if(mDecl.matches(mSig)) return iDecl
     }
     return iDecl.extendedInterfaceUseList.map{ getIDeclaration(mSig, it.decl as InterfaceDecl) }.firstOrNull()
+}
+
+data class NonCoreABSException(val featureName: String) :Exception("Feature not part of CoreABS: $featureName")
+
+fun getCauseException(e : Exception, cause:Class<*>?) : Throwable?{
+    if (e.javaClass ==  cause)
+        return e
+    else if(e.cause == null || e.cause !is Exception)
+        return null
+    else return getCauseException((e.cause as Exception), cause)
 }

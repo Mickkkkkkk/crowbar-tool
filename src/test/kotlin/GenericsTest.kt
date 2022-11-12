@@ -308,6 +308,36 @@ class GenericsTest : CrowbarTest() {
                     classDecl.extractMethodNode(postInv, "singletonSuccess", repos)
                 executeNode(singletonSuccess, repos, postInv) shouldBe true
 
+                val emptySetSuccess = classDecl.extractMethodNode(postInv, "emptySetSuccess", repos)
+                executeNode(emptySetSuccess, repos, postInv) shouldBe true
+
+                val emptySetSimpleFail = classDecl.extractMethodNode(postInv, "emptySetSimpleFail", repos)
+                executeNode(emptySetSimpleFail, repos, postInv) shouldBe false
+
+                val takeSuccess = classDecl.extractMethodNode(postInv, "takeSuccess", repos)
+                executeNode(takeSuccess, repos, postInv) shouldBe true
+
+                val takeFail = classDecl.extractMethodNode(postInv, "takeFail", repos)
+                executeNode(takeFail, repos, postInv) shouldBe false
+
+                val removeSuccess = classDecl.extractMethodNode(postInv, "removeSuccess", repos)
+                executeNode(removeSuccess, repos, postInv) shouldBe true
+
+                val removeFail = classDecl.extractMethodNode(postInv, "removeFail", repos)
+                executeNode(removeFail, repos, postInv) shouldBe false
+
+                val sizeSuccess = classDecl.extractMethodNode(postInv, "sizeSuccess", repos)
+                executeNode(sizeSuccess, repos, postInv) shouldBe true
+
+                val sizeFail = classDecl.extractMethodNode(postInv, "sizeFail", repos)
+                executeNode(sizeFail, repos, postInv) shouldBe false
+
+                val elementsSuccess = classDecl.extractMethodNode(postInv, "elementsSuccess", repos)
+                executeNode(elementsSuccess, repos, postInv) shouldBe true
+
+                val elementsFail = classDecl.extractMethodNode(postInv, "elementsFail", repos)
+                executeNode(elementsFail, repos, postInv) shouldBe false
+
             }
 
 
@@ -363,9 +393,14 @@ class GenericsTest : CrowbarTest() {
 
                 val putSimpleSuccess = classDecl.extractMethodNode(postInv, "putSimpleSuccess", repos)
                 executeNode(putSimpleSuccess, repos, postInv) shouldBe true
-                }
 
+                val mapWrappingWithLookupDefaultSuccess = classDecl.extractMethodNode(postInv, "mapWrappingWithLookupDefaultSuccess", repos)
+                executeNode(mapWrappingWithLookupDefaultSuccess, repos, postInv) shouldBe true
 
+                val removeKeyLookupSuccess = classDecl.extractMethodNode(postInv, "removeKeyLookupSuccess", repos)
+                executeNode(removeKeyLookupSuccess, repos, postInv) shouldBe true
+
+            }
 
         }
 
@@ -375,6 +410,18 @@ class GenericsTest : CrowbarTest() {
             val classDecl = model.extractClassDecl("Generics", "MapClass")
             val mapWrappingWithLookupFail = classDecl.extractMethodNode(postInv, "mapWrappingWithLookupFail", repos)
             executeNode(mapWrappingWithLookupFail, repos, postInv) shouldBe false
+
+
+            val removeKeyLookupFail = classDecl.extractMethodNode(postInv, "removeKeyLookupFail", repos)
+            executeNode(removeKeyLookupFail, repos, postInv) shouldBe false
+        }
+
+        "$z3 onlyZ3-emptySetUnionFail"{
+            val (model, repos) = load(listOf(Paths.get("src/test/resources/generics.abs")))
+            val classDecl = model.extractClassDecl("Generics", "SetClass")
+
+            val emptySetUnionFail = classDecl.extractMethodNode(postInv, "emptySetUnionFail", repos)
+            executeNode(emptySetUnionFail, repos, postInv) shouldBe false
         }
 
         "$z3 onlyZ3-string-set"{
