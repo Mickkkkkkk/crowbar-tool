@@ -14,6 +14,8 @@ interface SymbolicTree : InfoNode{
     fun hasAbstractVar() : Boolean
     fun normalize()
     fun collectInferenceLeaves() : List<StaticNode> = this.collectLeaves().filterIsInstance<StaticNode>()
+
+    fun countSymbolicNodes() : Int
 }
 
 
@@ -31,6 +33,7 @@ data class StaticNode(val str : String) : SymbolicLeaf{
     override fun hasAbstractVar() : Boolean = false
     override fun normalize() = Unit
     override var info: NodeInfo  = NoInfo()
+    override fun countSymbolicNodes() : Int = 0
 }
 
 interface InfoNode {
@@ -58,6 +61,7 @@ data class LogicNode(
     override fun collectLeaves() : List<SymbolicLeaf> = listOf(this)
     override fun hasAbstractVar() : Boolean = containsAbstractVar(ante) || containsAbstractVar(succ)
     override fun normalize() = Unit
+    override fun countSymbolicNodes() : Int = 0
 }
 
 /*
@@ -85,5 +89,5 @@ data class SymbolicNode(
     override fun normalize() {
         content.modality.remainder = org.abs_models.crowbar.main.normalize(content.modality.remainder)
     }
+    override fun countSymbolicNodes() : Int =  children.fold(1, { acc, nx -> acc + nx.countSymbolicNodes() })
 }
-

@@ -17,7 +17,7 @@ if [ "$1" == "--clean" ]; then
   $PROJECT_PATH/gradlew assemble -p $PROJECT_PATH/
 fi
 
-echo "file;class;method;result;error;time" > "./reports/results${today_date}.csv"
+echo "file;class;method;size;result;error;time" > "./reports/results${today_date}.csv"
 
 SECONDS=0
 

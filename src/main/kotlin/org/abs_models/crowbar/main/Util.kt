@@ -295,6 +295,7 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
                 output("Crowbar  : Verification ${m.methodSig.name}: $closed")
                 totalClosed = totalClosed && closed
 
+                csv += "${node.countSymbolicNodes()};"
                 csv += "OK;NONE;"
             } catch (e: Exception) {
                 val sw = StringWriter()
@@ -303,6 +304,7 @@ fun ClassDecl.executeAllReport(repos: Repository, usedType: KClass<out DeductTyp
                 output("Crowbar  : Verification ${m.methodSig.name} failed due to exception:")
                 output(sw.toString())
                 val causeException = getCauseException(e, NonCoreABSException::class.java)
+                csv += "0;"
                 if(causeException != null) {
                     csv += "NO_CORE_ABS;${(causeException as NonCoreABSException).featureName};"
                 }
