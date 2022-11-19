@@ -25,3 +25,5 @@ Crowbar  : Verification time: ...
 Crowbar  : Total number of branches: 6
 ```
 On macOS, install Z3 with `brew install z3` instead. 
+
+You can find examples in `./examples/` and `./src/test/resources/`
