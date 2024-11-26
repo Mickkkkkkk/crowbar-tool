@@ -1,0 +1,8 @@
+module Linear;
+
+{
+    Int x = 100;
+    x = x - 10;
+    Int y = 4;
+    y = x * y;
+}

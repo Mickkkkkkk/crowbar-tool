@@ -22,6 +22,27 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.system.exitProcess
 
+// temp
+import org.abs_models.crowbar.data.SymbolicState
+import org.abs_models.crowbar.data.Term
+import org.abs_models.crowbar.data.Predicate
+import org.abs_models.crowbar.data.UpdateElement
+import org.abs_models.crowbar.data.False
+import org.abs_models.crowbar.data.True
+import org.abs_models.crowbar.data.EmptyUpdate
+import org.abs_models.crowbar.data.Modality
+import org.abs_models.crowbar.data.LTSkip
+import org.abs_models.crowbar.data.SkipStmt
+import org.abs_models.crowbar.data.Function
+import org.abs_models.crowbar.data.Eq
+import org.abs_models.crowbar.data.ProgVar
+import org.abs_models.crowbar.data.ElementaryUpdate
+import org.abs_models.crowbar.data.apply
+import org.abs_models.crowbar.data.Formula
+import org.abs_models.crowbar.trace.*
+import org.abs_models.crowbar.tree.*
+import org.abs_models.crowbar.types.*
+
 enum class Verbosity { SILENT, NORMAL, V, VV, VVV }
 
 var tmpPath = "/tmp/"
@@ -174,6 +195,43 @@ class Main : CliktCommand() {
         val end = System.currentTimeMillis()
         output("Crowbar  : Verification time: ${end-start}ms", Verbosity.SILENT)
         output("Crowbar  : Total number of branches: $count", Verbosity.SILENT)
+
+
+        // temp
+
+        val intStrct: Map<AbstractValue, List<AbstractValue>> = mapOf(
+            AbstractValue("⊥") to listOf(AbstractValue("pos"), AbstractValue("neg"), AbstractValue("zero"))
+            , AbstractValue("zero") to listOf(AbstractValue(">="), AbstractValue("<="))
+            , AbstractValue("pos") to listOf(AbstractValue(">="))
+            , AbstractValue("neg") to listOf(AbstractValue("<="))
+            , AbstractValue(">=") to listOf(AbstractValue("T"))
+            , AbstractValue("<=") to listOf(AbstractValue("T"))
+            , AbstractValue("T") to listOf()
+        )
+        val intPreds: Map<AbstractValue, (Term) -> Formula> = mapOf(
+            AbstractValue("⊥") to { _ -> False}
+            , AbstractValue("zero") to { term -> Predicate("=", listOf(term, Function("0"))) }
+            , AbstractValue("pos") to { term -> Predicate(">", listOf(term, Function("0"))) }
+            , AbstractValue("neg") to { term -> Predicate("<", listOf(term, Function("0"))) }
+            , AbstractValue(">=") to { term -> Predicate(">=", listOf(term, Function("0"))) }
+            , AbstractValue("<=") to { term -> Predicate("<=", listOf(term, Function("0"))) }
+            , AbstractValue("T") to { _ -> True }
+        )
+        val intSmol: AbstractValue = AbstractValue("⊥")
+        val intBeeg: AbstractValue = AbstractValue("T")
+        val intLattis: AbstractLattice = AbstractLattice(intStrct, intPreds, intSmol, intBeeg)
+        val exampleSymState = SymbolicState(True, ElementaryUpdate(ProgVar("x"), Function("1")), Modality(SkipStmt, LocalTypeTarget(LTSkip, True)), listOf())
+
+        output("\n2 to abstract constant: ${intLattis.concreteToAbstractConstant(Function("2"),  exampleSymState)}", Verbosity.SILENT)
+        output("\n1 to abstract constant: ${intLattis.concreteToAbstractConstant(Function("1"),  exampleSymState)}", Verbosity.SILENT)
+        output("\n0 to abstract constant: ${intLattis.concreteToAbstractConstant(Function("0"),  exampleSymState)}", Verbosity.SILENT)
+        output("\n0 to abstract constant: ${intLattis.concreteToAbstractConstant(Function("0"),  exampleSymState)}", Verbosity.SILENT)
+        output("\n-1 to abstract constant: ${intLattis.concreteToAbstractConstant(Function("-1"),  exampleSymState)}", Verbosity.SILENT)
+        output("\n-2 to abstract constant: ${intLattis.concreteToAbstractConstant(Function("-2"),  exampleSymState)}", Verbosity.SILENT)
+        output("\nx = 1 to abstract constant: ${intLattis.concreteToAbstractConstant(ProgVar("x"),  exampleSymState)}", Verbosity.SILENT)
+
+        // temp
+
     }
 
     private fun runFreeAnalysis(model: Model) : Boolean{

@@ -24,5 +24,8 @@ class AccountImpl(Int balance) implements Account {
 }
 
 {
-	new AccountImpl(100);
+	Account acc = new AccountImpl(100);
+	acc.withdraw(25);
+	Int rest = acc.withdraw(25);
+	rest = acc.deposit(10);
 }

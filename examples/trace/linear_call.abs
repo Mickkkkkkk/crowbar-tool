@@ -1,0 +1,16 @@
+module LinearCall;
+
+interface MyInt {
+    Int myAdd(Int y);
+}
+
+class MyIntI(Int x) implements MyInt {
+    Int myAdd(Int y) {return x + y;}
+}
+
+{
+    MyInt x = new MyIntI(1);
+    //MyInt y = new MyIntI(2);
+    x.myAdd(1);
+    //y.myAdd(3);
+}

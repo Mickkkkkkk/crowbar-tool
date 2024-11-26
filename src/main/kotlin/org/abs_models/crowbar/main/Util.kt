@@ -20,6 +20,9 @@ import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.memberFunctions
 import kotlin.system.exitProcess
 
+// Import traces
+import org.abs_models.crowbar.trace.*
+
 /*
 A number of utility functions for user interaction and proof setup
  */
@@ -233,6 +236,9 @@ fun executeNode(node : SymbolicNode, repos: Repository, usedType: KClass<out Ded
 
     output("Crowbar-v: symbolic execution tree:",Verbosity.V)
     output(node.debugString(0),Verbosity.V)
+
+    output("Crowbar-v: traces:",Verbosity.V)
+    output(constructTraces(node).toString() + "\n\n",Verbosity.V)
 
     if(!node.finishedExecution()){
         println(node.debugString(0))
